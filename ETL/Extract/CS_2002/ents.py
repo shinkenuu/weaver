@@ -124,7 +124,6 @@ class RawEntity:
     schema_id = None
     data_value = None
 
-
     def __init__(self):
         pass
 

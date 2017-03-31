@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 from ETL.Extract.CS_2002 import ents as cs_2002_ents
+from ETL.Extract.MsAccess import ents as ms_access_ents
 from ETL.Transform.Vehicles import ent as vehicles_ent
 from ETL.Transform.PublicIncentives import ent as incentives_ent
+from ETL.Transform.TP import ent as tp_ent
 import copy
 
 
@@ -43,27 +45,44 @@ class Transformer:
         :param input_files: the file containing the raw entities
         :return: 
         """
-        transformed_ent = None
+        into_ent = None
         if into == 'vehicles':
-            transformed_ent = vehicles_ent.VehicleEntity()
+            into_ent = vehicles_ent.VehicleEntity()
         elif into == 'incentives':
-            transformed_ent = incentives_ent.IncentiveEntity()
+            into_ent = incentives_ent.IncentiveEntity()
         else:
             raise NotImplementedError(into)
         raw_ents = []
         for input_file in input_files:
             with open(input_file, 'r+') as file:
                 for line in file:
-                    transformed_ent_copy = copy.copy(transformed_ent)
                     raw_ent = cs_2002_ents.RawEntity()
                     raw_ent.from_line(line)
                     # if raw_ent is the first one of this file OR if this raw_ent has belongs to the
                     if len(raw_ents) == 0 or raw_ents[0].vehicle_id == raw_ent.vehicle_id:
                         raw_ents.append(raw_ent)
                     else:
-                        self._transformed_ents.append(transformed_ent_copy.assembly(raw_ents))
+                        transformed_ent = copy.copy(into_ent)
+                        transformed_ent.assembly(raw_ents)
+                        self._transformed_ents.append(transformed_ent)
                         raw_ents.clear()
                         raw_ents.append(raw_ent)
 
     def _transform_rt_tp(self, input_files):
-        pass
+        into_ent = tp_ent.TpEntity()
+        raw_ents = []
+        for input_file in input_files:
+            with open(input_file, 'r+') as file:
+                for line in file:
+                    raw_ent = ms_access_ents.RawEntity()
+                    raw_ent.from_line(line)
+                    # if raw_ent is the first one of this file OR if this raw_ent has belongs to the
+                    if len(raw_ents) == 0 or \
+                            (raw_ents[0].uid == raw_ent.uid and raw_ents[0].data_date == raw_ent.data_date):
+                        raw_ents.append(raw_ent)
+                    else:
+                        transformed_ent = copy.copy(into_ent)
+                        transformed_ent.assembly(raw_ents)
+                        self._transformed_ents.append(transformed_ent)
+                        raw_ents.clear()
+                        raw_ents.append(raw_ent)
