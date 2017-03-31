@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 
-from . import scbr
+from ETL.Extract.CS_2002 import ents as cs_2002_ents
 
 
-class EscbrEntity(scbr.Entity):
+class IncentiveEntity(cs_2002_ents.AssembledEntity):
     vehicle_id = 0
     jato_value = ''
     take_rate = ''
@@ -20,7 +20,7 @@ class EscbrEntity(scbr.Entity):
     internal_comms = ''
 
     def __init__(self):
-        pass
+        super(cs_2002_ents.AssembledEntity, self).__init__()
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.jato_value), str(self.take_rate), str(self.dealer_contrib_msrp),
