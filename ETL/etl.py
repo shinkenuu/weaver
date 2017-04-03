@@ -32,7 +32,8 @@ def main():
         raise NotImplementedError()
     elif (sys.argv[2] == '-t'):
         septimus = transformer.Transformer()
-        septimus.transform(into=str(sys.argv[3]), raw_data_files=str.split(sys.argv[4], ','), transformed_data_file=sys.argv[5])
+        septimus.transform(
+            into=str(sys.argv[3]), raw_data_files=str.split(sys.argv[4], ','), transformed_data_file=sys.argv[5])
     elif (sys.argv[2] == '-l'):
         raise NotImplementedError()
 
