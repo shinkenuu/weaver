@@ -1,26 +1,24 @@
-#!/usr/bin/env python3
-
-
 from ETL.Extract.CS_2002 import ents as cs_2002_ents
 
 
-class IncentiveEntity(cs_2002_ents.AssembledEntity):
-    vehicle_id = 0
-    jato_value = ''
-    take_rate = ''
-    dealer_contrib_msrp = ''
-    manuf_contrib_msrp = ''
-    gov_contrib_msrp = ''
-    deposit_perc = ''
-    max_term = ''
-    interest = ''
-    start_date = ''
-    end_date = ''
-    public_notes = ''
-    internal_comms = ''
-
-    def __init__(self):
-        super(cs_2002_ents.AssembledEntity, self).__init__()
+class IncentiveEntity(cs_2002_ents.AssemblerEntity):
+    def __init__(self, raw_ents=None):
+        super().__init__()
+        self.vehicle_id = 0
+        self.jato_value = ''
+        self.take_rate = ''
+        self.dealer_contrib_msrp = ''
+        self.manuf_contrib_msrp = ''
+        self.gov_contrib_msrp = ''
+        self.deposit_perc = ''
+        self.max_term = ''
+        self.interest = ''
+        self.start_date = ''
+        self.end_date = ''
+        self.public_notes = ''
+        self.internal_comms = ''
+        if raw_ents:
+            super().assembly(raw_ents)
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.jato_value), str(self.take_rate), str(self.dealer_contrib_msrp),
