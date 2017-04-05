@@ -1,41 +1,55 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 
+import os
 import sys
 from ETL.Transform import transformer
 
 
+def etl(action, raw_data_file_names, transformed_data_file_name, target=None):
+    """
+        Extracts, Transforms or Loads data from a source to a destiny
+    :param action: [x|t|l] eXtract, Transform, Load
+    :param raw_data_file_names: iterable with raw data file names
+    :param transformed_data_file_name:
+    :param transform_into: destiny in the [database.table] format
+    :return: 
+    """
+    raw_data_file_names = raw_data_file_names.split(',')
+
+    #Verify input files existence
+    for file_name in raw_data_file_names:
+        if not os.path.isfile(file_name):
+            raise FileNotFoundError(file_name)
+
+    if (action == 'x'):
+        raise NotImplementedError('Extraction')
+    elif (action == '-t'):
+        transformer.transform(
+            into=target,
+            raw_data_file_names=raw_data_file_names,
+            transformed_data_file_name=transformed_data_file_name)
+    elif (action == '-l'):
+        raise NotImplementedError('Load')
+
+
 def main():
     """
-    NAME
-        ETL
+        NAME
+            ETL
 
-    SYNOPSIS
-        etl.py [OPTIONS] [DATABASE] [INPUT FILE NAME] [OUTPUT FILE NAME]
+        SYNOPSIS
+            etl.py [OPTIONS] [INPUT FILE NAME[,INPUT FILE NAME]] [OUTPUT FILE NAME] [TARGET]
 
-    OPTIONS
-        <b>-x</b> eXtract
-        <b>-t</b> Transform
-        <b>-l</b> Load
-    
-    DATABASE
-        <b>--sscbr</b> stands for Cars
-        <b>--nscbr</b> stands for Light Commercials
-        <b>--escbr</b> stand for Public Incentives
+        OPTIONS
+            <b>-x</b> eXtract
+            <b>-t</b> Transform
+            <b>-l</b> Load
 
-    """
+        TARGET
+            [<b>database</b>.<b>table</b>]
+        """
+    etl(sys.argv[2], sys.argv[3], sys.argv[4], target=sys.argv[5])
 
-    if(sys.argv.__len__() < 6):
-        print("Insufficient parameters")
-        return -1
-
-    if (sys.argv[2] == '-x'):
-        raise NotImplementedError()
-    elif (sys.argv[2] == '-t'):
-        septimus = transformer.Transformer()
-        septimus.transform(
-            into=str(sys.argv[3]), raw_data_files=str.split(sys.argv[4], ','), transformed_data_file=sys.argv[5])
-    elif (sys.argv[2] == '-l'):
-        raise NotImplementedError()
 
 
 if __name__ == '__main__':

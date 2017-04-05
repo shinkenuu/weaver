@@ -1,10 +1,8 @@
-from ETL.Extract.CS_2002 import ents as cs_2002_ents
+from . import rt_ent
 
 
-class IncentiveEntity(cs_2002_ents.AssemblerEntity):
+class IncentiveEntity(rt_ent.RtEntity):
     def __init__(self, raw_ents=None):
-        super().__init__()
-        self.vehicle_id = 0
         self.jato_value = ''
         self.take_rate = ''
         self.dealer_contrib_msrp = ''
@@ -17,8 +15,7 @@ class IncentiveEntity(cs_2002_ents.AssemblerEntity):
         self.end_date = ''
         self.public_notes = ''
         self.internal_comms = ''
-        if raw_ents:
-            super().assembly(raw_ents)
+        super().__init__(raw_ents)
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.jato_value), str(self.take_rate), str(self.dealer_contrib_msrp),

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import abc
 
 dict_version_state = {
@@ -117,49 +115,75 @@ dict_transmission_type = {
 
 
 class RawEntity:
-    """
-    CS_2002 raw entity
-    """
-    vehicle_id = 0
-    schema_id = None
-    data_value = None
+    __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
+    def __init__(self, line=''):
+        if line != '':
+            self.from_line(line)
+
+    @abc.abstractmethod
+    def from_line(self, line):
+        """
+            Populates this Entity with raw data from a file's line
+        :return:
+        """
         pass
+
+    @abc.abstractmethod
+    def compare(self, other):
+        """
+            Compares two instances of raw_ent and check if they belong to the same transformed_ent
+        :param other: another instance of raw_ent to be compared to this one
+        :return: True if this and other raw_ent belongs to the same transformed_ent
+        """
+        pass
+
+
+class Cs2002Entity(RawEntity):
+    """
+        CS_2002 entity
+    """
+    def __init__(self, line=''):
+        self.vehicle_id = 0
+        self.schema_id = None
+        self.data_value = None
+        super().__init__(line)
 
     def from_line(self, line):
         """
-        Constructor from a line of text (vehicle_id|schema_id|data_value)
-        :param line: 
+        Set this entity from a line of text (vehicle_id|schema_id|data_value)
+        :param line: the line of text to set from
         :return: 
         """
         self.vehicle_id = line.split('|')[0]
         self.schema_id = line.split('|')[1]
         self.data_value = line.split('|')[2].strip('\n')
 
+    def compare(self, other):
+        return self.vehicle_id == other.vehicle_id
 
-class AssembledEntity:
+
+class MsAccessTpEntity(RawEntity):
     """
-    Super class for assembled CS_2002 entities
+        Microsoft Access Rt entity
     """
-    __metaclass__ = abc.ABCMeta
+    def __init__(self, line=''):
+        self.uid = 0
+        self.data_date = 19000101  # yyyymmdd
+        self.sample_date = 19000101  # yyyymmdd
+        self.transaction_price = 0.0
+        super().__init__(line)
 
-    def __init__(self):
-        pass
+    def from_line(self, line):
+        """
+        Set this entity from a line of text (uid|data_date|delivery_date|transaction_price)
+        :param line: the line of text to set from
+        :return: 
+        """
+        self.uid = line.split('|')[0]
+        self.data_date = line.split('|')[1]
+        self.sample_date = line.split('|')[2]
+        self.transaction_price = line.split('|')[3].strip('\n')
 
-    @abc.abstractmethod
-    def _decode_raw_ent(self, raw_ent):
-        """
-            Populates this Entity with raw data from an raw entity
-        :return:
-        """
-        pass
-
-    def assembly(self, raw_ents):
-        """
-            Assemblies data from raw entities and store into the child Entity
-        :param raw_ents: list of raw entities to compose the child entity 
-        :return:
-        """
-        for raw_ent in raw_ents:
-            self._decode_raw_ent(raw_ent)
+    def compare(self, other):
+        return self.uid == other.uid and self.data_date == other.data_date

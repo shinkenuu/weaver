@@ -1,14 +1,22 @@
 import abc
+from datetime import datetime
+from ETL.Extract import raw_ents
 
 
-class AssemblerEntity:
+class RtEntity:
     """
-        
+        Base RT entity that satisfy the needs of any child RT entity
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
-        self.vehicle_id = 0
+    def __init__(self, raw_ents: [raw_ents.RawEntity] = None) -> None:
+        self._vehicle_id = 0
+        if raw_ents:
+            self.assembly(raw_ents)
+
+    @property
+    def vehicle_id(self):
+        return self._vehicle_id
 
     @abc.abstractmethod
     def _decode_raw_ent(self, raw_ent):
