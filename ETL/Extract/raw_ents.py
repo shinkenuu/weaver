@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import abc
 
 dict_version_state = {
@@ -114,9 +116,7 @@ dict_transmission_type = {
 }
 
 
-class RawEntity:
-    __metaclass__ = abc.ABCMeta
-
+class RawEntity(object, metaclass=abc.ABCMeta):
     def __init__(self, line=''):
         if line != '':
             self.from_line(line)
@@ -130,7 +130,7 @@ class RawEntity:
         pass
 
     @abc.abstractmethod
-    def compare(self, other):
+    def belongs_with(self, other):
         """
             Compares two instances of raw_ent and check if they belong to the same transformed_ent
         :param other: another instance of raw_ent to be compared to this one
@@ -159,7 +159,7 @@ class Cs2002Entity(RawEntity):
         self.schema_id = line.split('|')[1]
         self.data_value = line.split('|')[2].strip('\n')
 
-    def compare(self, other):
+    def belongs_with(self, other):
         return self.vehicle_id == other.vehicle_id
 
 
@@ -185,5 +185,5 @@ class MsAccessTpEntity(RawEntity):
         self.sample_date = line.split('|')[2]
         self.transaction_price = line.split('|')[3].strip('\n')
 
-    def compare(self, other):
+    def belongs_with(self, other):
         return self.uid == other.uid and self.data_date == other.data_date

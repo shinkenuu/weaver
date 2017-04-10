@@ -1,4 +1,7 @@
+#!/usr/bin/env python
+
 import smtplib
+import credentials
 
 scroll_template = \
     'From: {0}\n' \
@@ -9,10 +12,11 @@ scroll_template = \
 def send_message(receivers, subject, msg):
     if not receivers.__iter__() or len(receivers) < 1:
         raise TypeError('receivers must be iterable with at least one e-mail address')
-    msg_sender = 'weavers.pigeon@gmail.com'
+    credential = credentials.credentials_dict['gmail']
+    msg_sender = credential.username
     msg = scroll_template.format(msg_sender, ','.join(receivers), subject, msg)
-    smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-    smtp.login(msg_sender, 'Wre8t5naWe=#')
+    smtp = smtplib.SMTP_SSL(credential.ipAddress, credential.port)
+    smtp.login(msg_sender, credential.pwd)
     smtp.sendmail(msg_sender, receivers, msg)
     smtp.close()
 

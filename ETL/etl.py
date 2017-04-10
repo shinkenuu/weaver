@@ -1,35 +1,11 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
-import os
+import argparse
 import sys
+import warder
 from ETL.Transform import transformer
 
-
-def etl(action, raw_data_file_names, transformed_data_file_name, target=None):
-    """
-        Extracts, Transforms or Loads data from a source to a destiny
-    :param action: [x|t|l] eXtract, Transform, Load
-    :param raw_data_file_names: iterable with raw data file names
-    :param transformed_data_file_name:
-    :param transform_into: destiny in the [database.table] format
-    :return: 
-    """
-    raw_data_file_names = raw_data_file_names.split(',')
-
-    #Verify input files existence
-    for file_name in raw_data_file_names:
-        if not os.path.isfile(file_name):
-            raise FileNotFoundError(file_name)
-
-    if (action == 'x'):
-        raise NotImplementedError('Extraction')
-    elif (action == '-t'):
-        transformer.transform(
-            into=target,
-            raw_data_file_names=raw_data_file_names,
-            transformed_data_file_name=transformed_data_file_name)
-    elif (action == '-l'):
-        raise NotImplementedError('Load')
+etl_warder = warder.Warder()
 
 
 def main():
@@ -38,18 +14,37 @@ def main():
             ETL
 
         SYNOPSIS
-            etl.py [OPTIONS] [INPUT FILE NAME[,INPUT FILE NAME]] [OUTPUT FILE NAME] [TARGET]
+            etl.py [COMMAND] [OPTIONS]
+
+        COMMAND
+            <b>extract</b>
+            <b>transform</b>
+            <b>load</b>
 
         OPTIONS
-            <b>-x</b> eXtract
-            <b>-t</b> Transform
-            <b>-l</b> Load
+            --<b>input</b> [path/to/filex1[ path/to/filexN]]
+            --<b>target</b> [<database>.<table>]
+    """
+    arg_parser = argparse.ArgumentParser(description='Extract, Transform or Load data')
+    arg_parser.add_argument('command', nargs=1, type=str, choices=['extract', 'transform', 'load'],
+                            help='extract|transform|load')
+    arg_parser.add_argument('--input', nargs='+', type=argparse.FileType('r'), help='file(s) to act on')
+    arg_parser.add_argument('--target', nargs=1, type=str, help='<database>.<table>')
+    parsed_args = arg_parser.parse_args(sys.argv[1:])
 
-        TARGET
-            [<b>database</b>.<b>table</b>]
-        """
-    etl(sys.argv[2], sys.argv[3], sys.argv[4], target=sys.argv[5])
-
+    try:
+        if parsed_args.command[0] == 'extract':
+            raise NotImplementedError('Extraction module of ETL')
+        elif parsed_args.command[0] == 'transform':
+            transformer.transform(
+                into=parsed_args.target,
+                raw_data_file_names=parsed_args.input)
+        elif parsed_args.command[0] == 'load':
+            raise NotImplementedError('Loading module of ETL')
+        else:
+            raise NotImplementedError('Invalid command: {}'.format(parsed_args.command))
+    except Exception as err:
+        etl_warder.ward_error('etl', err)
 
 
 if __name__ == '__main__':

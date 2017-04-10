@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import re
 
 from ETL.Extract import raw_ents as cs_2002_ent

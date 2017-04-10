@@ -1,5 +1,6 @@
+#!/usr/bin/env python
+
 import abc
-from datetime import datetime
 from ETL.Extract import raw_ents
 
 
