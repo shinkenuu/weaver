@@ -1,16 +1,11 @@
 #!/usr/bin/env python
 
-import os
 import traceback
 from datetime import datetime
 from pymongo import MongoClient
 import credentials
 import pigeon
 
-weavers_dirs_dict = {
-    'root': '{0}/weaver/'.format(os.path.expanduser('~')),
-    'etl_root': '{0}/weaver/etl/'.format(os.path.expanduser('~'))
-}
 
 class Singleton(type):
     _instances = {}

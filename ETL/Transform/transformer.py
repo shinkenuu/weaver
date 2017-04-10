@@ -1,26 +1,10 @@
 #!/usr/bin/env python
 
 import os
-from ETL.Extract import raw_ents
-from ETL.Transform.Rt import tp_ent, public_inc_ent, vehicle_ent
+from ETL import etl
 
 
-raw_ents_dict = {
-    'sscbr_cs_2002': raw_ents.Cs2002Entity(),
-    'nsscbr_cs_2002': raw_ents.Cs2002Entity,
-    'escbr_cs_2002': raw_ents.Cs2002Entity(),
-    'cs_rt_tp_completa': raw_ents.MsAccessTpEntity(),
-    'cs_rt_tp_toyota': raw_ents.MsAccessTpEntity()
-}
-
-into_ents_dict = {
-    'rt.vehicles': vehicle_ent.VehicleEntity(),
-    'rt.incentives': public_inc_ent.IncentiveEntity(),
-    'rt.tp': tp_ent.TpEntity()
-}
-
-
-def transform(into, raw_data_file_names):
+def transform(into_ent_type : type, raw_data_file_names : str):
     """
     Transforms raw entities from files into final ents in the file read to bulk insert
     :param into: The final entity in which the transform must lead raw entities in 'input_files' to. 
@@ -29,10 +13,9 @@ def transform(into, raw_data_file_names):
     :param transformed_data_file_name: The file name to store the transformed entities (read to bulk insert)
     :return: 
     """
-    into_ent_type = type(into_ents_dict[into])
     transformed_ents = []
     for raw_file in raw_data_file_names:
-        raw_ent_type = type(raw_ents_dict[os.path.basename(raw_file)])
+        raw_ent_type = type(etl.raw_ent_types_dict[os.path.basename(raw_file).lower()])
         with open(raw_file, 'r+') as file:
             all_lines = file.read().split('\n')
         all_lines.sort()
@@ -47,7 +30,7 @@ def transform(into, raw_data_file_names):
                 transformed_ents.append(transformed_ent)
                 raw_ents.clear()
                 raw_ents.append(raw_ent)
-        _write_ents_to_disc(transformed_ents, '/home/{0}/weaver/'.format(into_ents_dict[into]))
+        _write_ents_to_disc(transformed_ents, etl.dirs_dict['into'])
 
 
 def _write_ents_to_disc(ents, output_path):

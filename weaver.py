@@ -1,7 +1,12 @@
-#!/usr/bin/python3
+#!/usr/env python
 
+import os
 import sys
 
+
+weavers_dirs_dict = {
+    'root': '{}/weaver/'.format(os.path.expanduser('~')),
+}
 
 def main():
     """

@@ -1,51 +1,43 @@
-#!/usr/bin/env python
-
-import argparse
-import sys
+import os
 import warder
-from ETL.Transform import transformer
+from .Extract import raw_ents
+from .Transform import transformer
+from .Transform.Rt import vehicle_ent, tp_ent, public_inc_ent
 
-etl_warder = warder.Warder()
+_warder = warder.Warder()
+
+dirs_dict = {
+    'root': '{}/weaver/etl/'.format(os.path.expanduser('~')),
+    'raw': '{}/weaver/etl/raw/'.format(os.path.expanduser('~')),
+    'ready': '{}/weaver/etl/ready/'.format(os.path.expanduser('~')),
+}
+
+raw_ent_types_dict = {
+    'sscbr_cs_2002': raw_ents.Cs2002Entity,
+    'nscbr_cs_2002': raw_ents.Cs2002Entity,
+    'escbr_cs_2002_br_public_incentive': raw_ents.Cs2002Entity,
+    'cs_rt_tp_completa': raw_ents.MsAccessTpEntity,
+    'cs_rt_tp_toyota': raw_ents.MsAccessTpEntity
+}
+
+ready_ent_types_dict = {
+    'rt.vehicles': vehicle_ent.VehicleEntity,
+    'rt.incentives': public_inc_ent.IncentiveEntity,
+    'rt.tp': tp_ent.TpEntity
+}
 
 
-def main():
-    """
-        NAME
-            ETL
-
-        SYNOPSIS
-            etl.py [COMMAND] [OPTIONS]
-
-        COMMAND
-            <b>extract</b>
-            <b>transform</b>
-            <b>load</b>
-
-        OPTIONS
-            --<b>input</b> [path/to/filex1[ path/to/filexN]]
-            --<b>target</b> [<database>.<table>]
-    """
-    arg_parser = argparse.ArgumentParser(description='Extract, Transform or Load data')
-    arg_parser.add_argument('command', nargs=1, type=str, choices=['extract', 'transform', 'load'],
-                            help='extract|transform|load')
-    arg_parser.add_argument('--input', nargs='+', type=argparse.FileType('r'), help='file(s) to act on')
-    arg_parser.add_argument('--target', nargs=1, type=str, help='<database>.<table>')
-    parsed_args = arg_parser.parse_args(sys.argv[1:])
-
+def etl(command : str, input, target):
     try:
-        if parsed_args.command[0] == 'extract':
+        if command == 'extract':
             raise NotImplementedError('Extraction module of ETL')
-        elif parsed_args.command[0] == 'transform':
+        elif command == 'transform':
             transformer.transform(
-                into=parsed_args.target,
-                raw_data_file_names=parsed_args.input)
-        elif parsed_args.command[0] == 'load':
+                into_ent_type=ready_ent_types_dict[target],
+                raw_data_file_names=input)
+        elif command == 'load':
             raise NotImplementedError('Loading module of ETL')
         else:
-            raise NotImplementedError('Invalid command: {}'.format(parsed_args.command))
+            raise NotImplementedError('Invalid command: {}'.format(command))
     except Exception as err:
-        etl_warder.ward_error('etl', err)
-
-
-if __name__ == '__main__':
-    main()
+        _warder.ward_error('etl', err)
