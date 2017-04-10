@@ -1,2 +1,2 @@
-./env/
-./credentials.py
+env/*
+credentials.py
