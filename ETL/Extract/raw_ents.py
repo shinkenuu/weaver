@@ -2,7 +2,7 @@
 
 import abc
 
-dict_version_state = {
+version_state_dict = {
     '-': '',
     '?': '?',
     'A': 'estoque',
@@ -24,7 +24,7 @@ dict_version_state = {
     'V': 'nova versão'
  }
 
-dict_body_type = {
+body_type_dict = {
     '-': '',
     '?': '?',
     '3C': 'tricycle',
@@ -68,7 +68,7 @@ dict_body_type = {
     'WT': 'chassis cabine com plataforma'
 }
 
-dict_driven_wheels = {
+driven_wheels_dict = {
     '-': '',
     '?': '?',
     '4': '4x4',
@@ -77,7 +77,7 @@ dict_driven_wheels = {
     'R': 'traseira'
 }
 
-dict_fuel_type = {
+fuel_type_dict = {
     '-': '',
     '?': '?',
     '1': 'mistura de etanol',
@@ -100,7 +100,7 @@ dict_fuel_type = {
     'U': 'gasolina'
 }
 
-dict_transmission_type = {
+transmission_type_dict = {
     '-': '',
     '?': '?',
     'A': 'automática',
@@ -187,3 +187,12 @@ class MsAccessTpEntity(RawEntity):
 
     def belongs_with(self, other):
         return self.uid == other.uid and self.data_date == other.data_date
+
+
+types_dict = {
+    'sscbr_cs_2002': Cs2002Entity,
+    'nscbr_cs_2002': Cs2002Entity,
+    'escbr_cs_2002_br_public_incentive': Cs2002Entity,
+    'cs_rt_tp_completa': MsAccessTpEntity,
+    'cs_rt_tp_toyota': MsAccessTpEntity
+}

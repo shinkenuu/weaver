@@ -5,10 +5,10 @@ from . import etl
 
 
 def init_env():
-    for dir in etl.dirs_dict:
+    for key, dir in etl.dirs_dict.items():
         if not os.path.exists(dir):
             os.makedirs(dir)
 
 
-if __name__ == '__init__':
+if __name__ in ('__init__', 'ETL'):
     init_env()

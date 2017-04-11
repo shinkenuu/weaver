@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-from . import etl
+from ETL import etl
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Extract, Transform or Load data')
