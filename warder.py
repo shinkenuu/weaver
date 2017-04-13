@@ -3,7 +3,7 @@
 import traceback
 from datetime import datetime
 from pymongo import MongoClient
-import credentials
+import access
 import pigeon
 
 
@@ -18,8 +18,8 @@ class Singleton(type):
 
 class Warder(object, metaclass=Singleton):
     def __init__(self):
-        self.credential = credentials.credentials_dict['mongodb']
-        self.mongo_client = MongoClient(self.credential.ipAddress, self.credential.port)
+        self.access = access.access_dict['mongodb']
+        self.mongo_client = MongoClient(self.access.address, self.access.port)
 
     def __getattr__(self, item):
         return getattr(self.instance, item)
