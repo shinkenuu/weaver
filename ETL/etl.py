@@ -12,17 +12,21 @@ dirs_dict = {
 }
 
 
-def etl(command: str, input, target):
+def etl(command: str, target):
+    """
+    Receives command and delegates it to the right ETL module
+    :param command: 
+    :param target: the immediate destination of the refered data
+    :return: 
+    """
     try:
+        target = target[0]
         if command == 'extract':
-            extractor.extract()
+            extractor.extract(target=target, output_dir='{0}{1}/'.format(dirs_dict['raw'], target))
         elif command == 'transform':
-            transformer.transform(
-                into=target,
-                raw_data_file_names=input,
-                output_dir=dirs_dict['transformed'])
+            transformer.transform(into=target, output_dir='{0}{1}/'.format(dirs_dict['transformed'], target))
         elif command == 'load':
-            raise NotImplementedError('Loading module of ETL')
+            raise NotImplementedError('Load module of ETL')
         else:
             raise NotImplementedError('Invalid command: {}'.format(command))
     except Exception as err:
