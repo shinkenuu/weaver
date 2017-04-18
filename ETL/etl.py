@@ -7,27 +7,38 @@ _warder = warder.Warder()
 
 dirs_dict = {
     'root': '{}/weaver/etl/'.format(os.path.expanduser('~')),
-    'raw': '{}/weaver/etl/raw/'.format(os.path.expanduser('~')),
+    'raw': extractor.raw_dir_path,
     'transformed': '{}/weaver/etl/transformed/'.format(os.path.expanduser('~')),
 }
 
 
-def etl(command: str, target):
+# TODO finish the chain logic
+def etl(command: str, target, chain: bool=False):
     """
     Receives command and delegates it to the right ETL module
     :param command: 
-    :param target: the immediate destination of the refered data
+    :param target: the immediate destination of the referred data
+    :param chain: pipe result from command to the next process
     :return: 
     """
     try:
-        target = target[0]
+        result = None
         if command == 'extract':
-            extractor.extract(target=target, output_dir='{0}{1}/'.format(dirs_dict['raw'], target))
-        elif command == 'transform':
-            transformer.transform(into=target, output_dir='{0}{1}/'.format(dirs_dict['transformed'], target))
-        elif command == 'load':
+            result = extractor.extract(target=target, chain=chain)
+            if chain:
+                command = 'transform'
+
+        if command == 'transform':
+            if chain:
+                result = transformer.transform(into=target, result)
+                command = 'load'
+            else:
+                transformer.transform(into=target)
+                return
+
+        if command == 'load':
             raise NotImplementedError('Load module of ETL')
-        else:
-            raise NotImplementedError('Invalid command: {}'.format(command))
+
+        raise NotImplementedError('Invalid command: {}'.format(command))
     except Exception as err:
         _warder.ward_error('etl', err)

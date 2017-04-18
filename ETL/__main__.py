@@ -16,4 +16,4 @@ if __name__ == '__main__':
     elif sys.argv[1] == 'load':
         pass
     parsed_args = arg_parser.parse_args(sys.argv[1:])
-    etl.etl(command=parsed_args.command[0], target=parsed_args.target)
+    etl.etl(command=parsed_args.command[0][0], target=parsed_args.target)

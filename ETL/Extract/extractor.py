@@ -1,93 +1,108 @@
 #!/usr/bin/env python
 
+import abc
 import ftplib
 import pymssql
 import os
 import access as acc
 
+raw_dir_path = '{}/weaver/etl/raw/'.format(os.path.expanduser('~'))
 
-class ExtractionSource:
-    def __init__(self, protocol: str, access: acc.Access, full_path: str=None, db: str=None, table: str=None):
-        self.protocol = protocol
+
+class Extractor:
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, access: acc.Access):
         self.access = access
-        if full_path:
-            self.full_path = full_path
-        if db:
-            self.db = db
-        if table:
-            self.table = table
+
+    @abc.abstractmethod
+    def extract(self, to_file: bool):
+        pass
 
 
-target_extration_sources_dict = {
-    'sscbr_cs2002': ExtractionSource('ftp', acc.access_dict['jatoftp2'],
-                                     'ftp2.carspecs.jato.com/CURRENT/DATABASES/SQLSERVER/SSCBR/SSCBR_CS2002_SQL.EXE'),
-    'nscbr_cs2002': ExtractionSource('ftp', acc.access_dict['jatoftp2'],
-                                     'ftp2.carspecs.jato.com/CURRENT/DATABASES/SQLSERVER/NSCBR/NSCBR_CS2002_SQL.EXE'),
-    'escbr_cs2002': ExtractionSource('ftp', acc.access_dict['jatoftp2'],
-                                     'ftp2.carspecs.jato.com/CUSTOMEREMBARGO/Current/Databases/SQLSERVER/SSCBR/'
-                                     'Incentive_Public_BR/SSCBR_CS2002_SQL.EXE'),
-    'rt.vehicles': ExtractionSource('mssql', acc.access_dict['ukvsqlbdrep01'], db='vehicles'),
-    'rt.incentives': ExtractionSource('mssql', acc.access_dict['ukvsqlbdrep01'], db='incentives'),
-    'rt.tp': ExtractionSource('mssql', acc.access_dict['ukvsqlbdrep01'], db='tp')
-}
+class FtpExtractor(Extractor):
+    def __init__(self, access: acc.Access, url: str, output_dir: str):
+        super().__init__(access)
+        self.url = url
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+        self.output_dir = output_dir
 
+    def extract(self, to_file: bool=False):
+        """
+        Extracts (downloads) file from ftp
+        :return: the path to the downloaded file
+        """
+        try:
+            with ftplib.FTP(self.access.address) as ftp:
+                ftp.login(self.access.username, self.access.pwd)
+                local_file_path = '{0}{1}'.format(self.output_dir, self.url.split('/')[-1])
+                with open(local_file_path, 'wb') as downloading_file:
+                    ftp.retrbinary('RETR {}'.format(self._get_file_path_since_root()), downloading_file.write)
+                return local_file_path
+        except Exception as ex:
+            raise ex
 
-def download_from_ftp(address: str, username: str, pwd: str, file_path: str, output_dir: str):
-    """
-    Download files from ftp
-    :param address:
-    :param username: 
-    :param pwd: 
-    :param file_path: 
-    :param output_dir: 
-    :return: 
-    """
-    try:
-        with ftplib.FTP(address) as ftp:
-            ftp.login(username, pwd)
-            with open('{0}{1}'.format(output_dir, file_path.split('/')[-1]), 'wb') as downloading_file:
-                ftp.retrbinary('RETR {}'.format(file_path).replace(address, ''), downloading_file.write)
-    except Exception as ex:
-        raise ex
-
+    def _get_file_path_since_root(self):
+        url = self.url
+        if url.startswith('ftp://'):
+            url = url.strip('ftp://')
+        return url.replace(url.split('/')[0], '')
 
 # TODO test
-def query_mssql(address: str, username: str, pwd: str, db: str, query: str):
-    """
-    Query SQL Server and return the results
-    :param address: SQL Server host address
-    :param username: login username 
-    :param pwd: login password
-    :param db: which database to run the query on
-    :param query: the query that retrieves the data
-    :return: the queried results
-    """
-    with pymssql.connect(address, username, pwd, db, charset='utf-8') as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(query)
-            return cursor.fetchall()
+class SqlDataExtractor(Extractor):
+    def __init__(self, access: acc.Access, db: str, query: str):
+        super().__init__(access)
+        self.db = db
+        self.query = query
+
+    def extract(self, to_file: bool):
+        try:
+            with pymssql.connect(self.access.address, self.access.username, self.access.pwd, self.db,
+                                 charset='utf-8') as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(self.query)
+                    if to_file:
+                        self._write_to_file(cursor.fetchall())
+                    else:
+                        return cursor.fetchall()
+        except Exception as ex:
+            raise ex
+
+    def _write_to_file(self, data: tuple):
+        with open(self.sql_file_name, 'w') as result_file:
+            for row in data:
+                result_file.write('{}\n'.format('|'.join(row)))
+
+
+def _create_extractor(target: str):
+    if target == 'sscbr_cs2002':
+        return FtpExtractor(acc.access_dict['jatoftp2'],
+                            'ftp://ftp2.carspecs.jato.com/CURRENT/DATABASES/SQLSERVER/SSCBR/SSCBR_CS2002_SQL.EXE',
+                            '{}sscbr_cs2002/'.format(raw_dir_path))
+    elif target == 'nscbr_cs2002':
+        return FtpExtractor(acc.access_dict['jatoftp2'],
+                            'ftp://ftp2.carspecs.jato.com/CURRENT/DATABASES/SQLSERVER/NSCBR/NSCBR_CS2002_SQL.EXE',
+                            '{}nscbr_cs2002/'.format(raw_dir_path))
+    elif target == 'escbr_cs2002':
+        return FtpExtractor(acc.access_dict['jatoftp2'],
+                            'ftp://ftp2.carspecs.jato.com/CUSTOMEREMBARGO/Current/Databases/SQLSERVER/SSCBR/'
+                            'Incentive_Public_BR/SSCBR_CS2002_SQL.EXE',
+                            '{}escbr_cs2002/'.format(raw_dir_path))
+    elif target == 'rt.vehicles':
+        return SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'], db='rt', query_sql_file_path='sscbr_cs2002')
+    elif target == 'rt.incentives':
+        return SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'], db='rt', query_sql_file_path='sscbr_cs2002')
+    elif target == 'rt.tp':
+        return SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'], db='rt', query_sql_file_path='sscbr_cs2002')
 
 
 # TODO code mssql query
-def extract(target: str, output_dir: str):
+def extract(target: str, chain: bool):
     """
     Extract data from sources based on the target declared
     :param target: the immediate destination of this data
-    :param output_dir: where should it be stored
     :return: 
     """
-    ext_src = target_extration_sources_dict[target]
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir, exist_ok=True)
-    if ext_src.protocol == 'ftp':
-            download_from_ftp(address=ext_src.access.address,
-                              username=ext_src.access.username,
-                              pwd=ext_src.access.pwd,
-                              file_path=ext_src.full_path,
-                              output_dir=output_dir)
-    elif ext_src.protocol == 'mssql':
-            query_mssql(address=ext_src.access.address,
-                        username=ext_src.access.username,
-                        pwd=ext_src.access.pwd,
-                        db=ext_src.db,
-                        query='code_me')
+    extractor = _create_extractor(target)
+    return extractor.extract(to_file=not chain)

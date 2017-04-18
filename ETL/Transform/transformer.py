@@ -4,6 +4,8 @@ import os
 from ETL.Extract.raw_ents import types_dict as raw_ent_types_dict
 from .Rt import vehicle_ent, public_inc_ent, tp_ent
 
+transformed_dir_path = '{}/weaver/etl/transformed/'.format(os.path.expanduser('~'))
+
 transformed_ent_types_dict = {
     'rt.vehicles': vehicle_ent.VehicleEntity,
     'rt.incentives': public_inc_ent.IncentiveEntity,
@@ -11,7 +13,7 @@ transformed_ent_types_dict = {
 }
 
 # TODO recode the way the function find input files
-def transform(into : str, output_dir : str):
+def transform(into : str):
     """
     Transforms raw entities from files into final ents in the file read to bulk insert
     :param into: The final entity in which the transform must lead raw entities in 'input_files' to. 
