@@ -12,8 +12,9 @@ transformed_ent_types_dict = {
     'rt.tp': tp_ent.TpEntity
 }
 
+
 # TODO recode the way the function find input files
-def transform(into : str):
+def transform(into: str):
     """
     Transforms raw entities from files into final ents in the file read to bulk insert
     :param into: The final entity in which the transform must lead raw entities in 'input_files' to. 

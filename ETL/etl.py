@@ -12,8 +12,7 @@ dirs_dict = {
 }
 
 
-# TODO finish the chain logic
-def etl(command: str, target, chain: bool=False):
+def etl(command: str, target: str):
     """
     Receives command and delegates it to the right ETL module
     :param command: 
@@ -24,21 +23,13 @@ def etl(command: str, target, chain: bool=False):
     try:
         result = None
         if command == 'extract':
-            result = extractor.extract(target=target, chain=chain)
-            if chain:
-                command = 'transform'
-
-        if command == 'transform':
-            if chain:
-                result = transformer.transform(into=target, result)
-                command = 'load'
-            else:
-                transformer.transform(into=target)
-                return
-
-        if command == 'load':
+            result = extractor.extract(target=target)
+        elif command == 'transform':
+            result = transformer.transform(into=target)
+        elif command == 'load':
             raise NotImplementedError('Load module of ETL')
-
-        raise NotImplementedError('Invalid command: {}'.format(command))
+        else:
+            raise NotImplementedError('Invalid command: {}'.format(command))
+        _warder.ward_progress('etl', 'OK', '{} completed for {}'.format(command, target))
     except Exception as err:
         _warder.ward_error('etl', err)
