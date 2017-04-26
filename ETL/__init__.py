@@ -1,14 +1,17 @@
 #!/usr/env python
 
 import os
-from . import etl
+from .Extract import extractor
+from .Transform import transformer
+from .Load import loader
 
 
-def init_env():
-    for key, dir in etl.dirs_dict.items():
-        if not os.path.exists(dir):
-            os.makedirs(dir, exist_ok=True)
+def init_env(dir: str):
+    if not os.path.exists(dir):
+        os.makedirs(dir, exist_ok=True)
 
 
 if __name__ in ('__init__', 'ETL'):
-    init_env()
+    init_env(extractor.extracted_dir_path)
+    init_env(transformer.transformed_dir_path)
+

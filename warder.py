@@ -24,7 +24,7 @@ class Warder(object, metaclass=Singleton):
     def __getattr__(self, item):
         return getattr(self.instance, item)
 
-    def ward_progress(self, task_name, status, msg):
+    def ward_progress(self, task_name: str, status: str, msg: str):
         """
             Log progress in MongoDB
         :param task_name: Which task is being updated
@@ -42,13 +42,13 @@ class Warder(object, metaclass=Singleton):
         }
         logs_collection.insert_one(log_doc)
 
-    def ward_error(self, task_name, exception):
+    def ward_error(self, task_name: str, exception: Exception):
         """
             Log error in MongoDB and send email to the White Tower (admins)
         :param task_name: Which task was running
         :param exception: The exception object
         :return: 
         """
-        self.ward_progress(task_name, 'error', traceback.extract_tb(exception.__traceback__))
+        self.ward_progress(task_name, 'error: {}'.format(exception), traceback.extract_tb(exception.__traceback__))
         pigeon.alert_tower('{}\n\n{}'.format(traceback.extract_stack(),
                                              traceback.extract_tb(exception.__traceback__)))
