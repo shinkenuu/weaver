@@ -20,7 +20,7 @@ class Extractor(metaclass=abc.ABCMeta):
         self.output_path = output_path
 
     @abc.abstractmethod
-    def extract(self, to_file: bool):
+    def extract(self):
         pass
 
 
@@ -31,7 +31,7 @@ class FtpExtractor(Extractor):
         super().__init__(access, output_path)
         self.url = url
 
-    def extract(self, to_file: bool=False):
+    def extract(self):
         """
         Extracts (downloads) file from ftp
         :return: the path to the downloaded file
@@ -62,25 +62,24 @@ class SqlDataExtractor(Extractor):
         self.db = db
         self.query = query
 
-    def extract(self, to_file: bool):
+    def extract(self):
         """
         Query database extracting results
-        :param to_file: output to file?
         :return: the extracted results XOR the output path
         """
         # specifying charset param in pymssql.connect() raises an unknown error
         with pymssql.connect(self.access.address, self.access.username, self.access.pwd, self.db) as conn:
             with conn.cursor() as cursor:
                 cursor.execute(self.query)
-                if to_file:
-                    self._write_to_file(cursor.fetchall())
-                else:
-                    return cursor.fetchall()
+                results = cursor.fetchall()
+        self._write_to_file(results)
+        return results
 
     def _write_to_file(self, query_results: tuple):
         with open(self.output_path, 'w') as result_file:
             for row in query_results:
                 result_file.write('{}{}'.format('|'.join(str(col) for col in row), '\n'))
+        return self.output_path
 
 
 class MultiSourceExtractor(Extractor):
@@ -88,21 +87,19 @@ class MultiSourceExtractor(Extractor):
         super().__init__(access=acc.Access('', '', '', '', ''), output_path='')
         self.extractors_list = single_extractor_list
 
-    def extract(self, to_file: bool):
+    def extract(self):
         """
         Loop through each source, extracting 
-        :param to_file: output to file?
         :return: the extracted results
         """
         if len(self.extractors_list) < 1:
             raise IndexError('MultiSourceExtractor\'s extractor list is empty')
         results = []
         for extractor in self.extractors_list:
-                results.append(extractor.extract(to_file=to_file))
+                results.append(extractor.extract())
         return results
 
 
-# TODO code mssql query
 def extract(target: str):
     """
     Extract data from sources based on the target declared
@@ -127,20 +124,20 @@ def extract(target: str):
             extractors = (SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'],
                                            db='rt',
                                            query='select * from vw_rt_vehicles_from_sscbr_cs2002'
-                                                 ' order by vehicle_id, schema_id',
+                                                 ' order by vehicle_id',
                                            output_path='{}rt/sscbr_cs2002.txt'.format(extracted_dir_path)),
                           SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'],
                                            db='rt',
                                            query='select * from vw_rt_vehicles_from_nscbr_cs2002'
-                                                 ' order by vehicle_id, schema_id',
+                                                 ' order by vehicle_id',
                                            output_path='{}rt/nscbr_cs2002.txt'.format(extracted_dir_path)))
             return MultiSourceExtractor(single_extractor_list=extractors)
         elif target == 'rt.incentives':
             return SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'],
                                     db='rt',
                                     query='select * from vw_rt_incentives_from_escbr_cs2002_br_public_incentive'
-                                          ' order by vehicle_id, schema_id, option_id',
+                                          ' order by vehicle_id, option_id',
                                     output_path='{}rt/escbr_cs2002_br_public_incentive.txt'.format(extracted_dir_path))
 
     extractor = create_extractor()
-    return extractor.extract(to_file=True)
+    return extractor.extract()
