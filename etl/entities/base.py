@@ -2,7 +2,27 @@ import abc
 from datetime import datetime
 
 
+def build_vehicle_id(uid: int, data_date: int):
+    """
+    Check uid and datadate to build a vehicle_id
+    :param uid: 
+    :param data_date: 
+    :return: vehicle_id
+    """
+    str_uid = str(uid)
+    str_data_date = str(data_date)
+    if 5 < len(str_uid) < 8 and check_date_format(str(str_data_date)):
+        return '{}{}'.format(str_uid, str_data_date)
+    else:
+        raise ValueError('{}{} is not a valid vehicle_id'.format(str_uid, str_data_date))
+
+
 def check_date_format(value: str):
+    """
+    Check date %Y%m%d format. May raise ValueError
+    :param value: the date to be checked
+    :return: True if date is OK. False otherwise
+    """
     try:
         datetime.strptime(value, '%Y%m%d')  # check date format
         return True
@@ -53,7 +73,7 @@ class AssemblableEntity(object, metaclass=abc.ABCMeta):
         pass
 
 
-class EntityAssembler(object, metaclass=abc.ABCMeta):
+class AssemblerEntity(object, metaclass=abc.ABCMeta):
     """
         A entity to be assembly multiple AssemblableEntity
     """
@@ -61,7 +81,16 @@ class EntityAssembler(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def assembly(self, assemblables_list: [raw.AssemblableEntity]):
+    def scavenge_common_data(self, assemblable: AssemblableEntity):
+        """
+        Instead of setting the common data from each assemblable, get it all from just one
+        :param assemblable: a assemblable sample with data in common with all other assemblables of that this assemblies
+        :return: 
+        """
+        pass
+
+    @abc.abstractmethod
+    def assembly(self, assemblables_list: [AssemblableEntity]):
         """
         Assemblies multiple assemblable entities into the AssemblerEntity
         :param assemblables_list: a list with AssemblableEntities to be assembly and populate the caller entity
