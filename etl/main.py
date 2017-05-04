@@ -1,31 +1,31 @@
+#!/usr/bin/env python3
 
 import warder
-from ETL.Extract import extractor
-from ETL.Transform import transformer
-from ETL.Load import loader
+from . import extractor, loader, transformer
 
 _warder = warder.Warder()
 
 
-def etl(command: str, target: str, chain_until: str):
+def etl(command: str, source: str, target: str, chain_until: str):
     """
-    Receives command and delegates it to the right ETL module
+    Receives command and delegates it to the right etl module
     :param command: extract | transform | load
-    :param target: the immediate destination of the referred data
+    :param source: the data source [ftp|mssql|msaccess]
+    :param target: the immediate destination of the referred data [server.database|database.table]
     :param chain_until: pipe results since command until ...
     :return: 
     """
     try:
         result = None
         if command not in ('extract', 'transform', 'load'):
-            raise NotImplementedError('Invalid command: {}'.format(command))
+            raise ValueError('Invalid command: {}'.format(command))
         if command == 'extract':
-            result = extractor.extract(target=target)
+            result = extractor.extract(source=source, target=target)
             _warder.ward_progress('etl', 'OK', '{} completed for {}'.format(command, target))
             if chain_until == 'transform' or chain_until == 'load':
                 command = 'transform'
         if command == 'transform':
-            result = transformer.transform(input_data=result, into=target)
+            result = transformer.transform(into=target, source=source, input_data=result)
             _warder.ward_progress('etl', 'OK', '{} completed for {}'.format(command, target))
             if chain_until == 'load':
                 command = 'load'

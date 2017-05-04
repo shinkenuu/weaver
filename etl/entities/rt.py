@@ -2,8 +2,8 @@
 
 import abc
 import re
-from datetime import datetime
-from . import raw_ents
+
+from ETL.Transform.rawents import cs2002 as raw_cs2002
 
 version_state_dict = {
     '-': '',
@@ -121,14 +121,6 @@ transmission_type_dict = {
 version_regex = re.compile(r'^([(])(O|!|\+|0)([)])')
 
 
-def check_date_format(value: str):
-    try:
-        datetime.strptime(value, '%Y%m%d')  # check date format
-        return True
-    except ValueError:
-        return False
-
-
 def compose(current: str, new: str):
     """
     Compose multiple data_values into the same attribute(field) joining everything with ','
@@ -146,21 +138,8 @@ class RtEntity(object, metaclass=abc.ABCMeta):
     """
         Base RT entity that satisfy the needs of any child RT entity
     """
-    def __init__(self, raw_ent_array: [raw_ents.RawEntity]=None) -> None:
+    def __init__(self):
         self._vehicle_id = 0
-        if raw_ent_array and isinstance(raw_ent_array, list):
-            self.assembly(raw_ent_array)
-
-    @property
-    def vehicle_id(self):
-        return self._vehicle_id
-
-    @vehicle_id.setter
-    def vehicle_id(self, value: str):
-        if 13 < len(value) < 16 and str.isnumeric(value[:-9]) and check_date_format(value[-8:]):  # check uid
-            self._vehicle_id = int(value)
-        else:
-            raise ValueError('{} doesnt meet the vehicle_id criteria'.format(value))
 
     @abc.abstractmethod
     def _decode_raw_ent(self, raw_ent: raw_ents.RawEntity):
@@ -185,12 +164,14 @@ class RtEntity(object, metaclass=abc.ABCMeta):
         :return:
         """
         self._scavenge_common_data(raw_ent_array[0])
+        if len(raw_ent_array) == 1:
+            return
         for raw_ent in raw_ent_array:
             self._decode_raw_ent(raw_ent)
 
 
 class VehicleEntity(RtEntity):
-    def __init__(self, raw_ent_array: [raw_ents.Cs2002Entity]=None):
+    def __init__(self, raw_ent_array: [raw_cs2002.Cs2002Entity]=None):
         self.uid = 0
         self.data_date = 0  # %Y%m%d
         self.version_state = ''
@@ -229,7 +210,7 @@ class VehicleEntity(RtEntity):
         if raw_ent.schema_id == '101':
             self.uid = int(raw_ent.data_value)
         elif raw_ent.schema_id == '104':
-            if check_date_format(raw_ent.data_value):
+            if raw_ents.check_date_format(raw_ent.data_value):
                 self.data_date = int(raw_ent.data_value)
             else:
                 raise ValueError('{} doesnt meet the data_date criteria'.format(raw_ent.data_value))
@@ -245,12 +226,12 @@ class VehicleEntity(RtEntity):
         elif raw_ent.schema_id == '302':
             self.version = version_regex.sub('', raw_ent.data_value)
         elif raw_ent.schema_id == '57108':
-            if check_date_format(raw_ent.data_value):
+            if raw_ents.check_date_format(raw_ent.data_value):
                 self.production_year = int(raw_ent.data_value)
             else:
                 raise ValueError('{} doesnt meet the production_year criteria'.format(raw_ent.data_value))
         elif raw_ent.schema_id == '108':
-            if check_date_format(raw_ent.data_value):
+            if raw_ents.check_date_format(raw_ent.data_value):
                 self.model_year = int(raw_ent.data_value)
             else:
                 raise ValueError('{} doesnt meet the model_year criteria'.format(raw_ent.data_value))
@@ -281,7 +262,7 @@ class VehicleEntity(RtEntity):
 
 
 class IncentiveEntity(RtEntity):
-    def __init__(self, raw_ent_array: [raw_ents.EscbrBrPublicIncentiveEntity]=None):
+    def __init__(self, raw_ent_array: [raw_ents.RawEntity]=None):
         self.jato_value = 0.0
         self.take_rate = 0.0
         self.code = ''
@@ -291,8 +272,8 @@ class IncentiveEntity(RtEntity):
         self.deposit_perc = 0.0
         self.max_term = 0
         self.interest = 0.0
-        self.start_date = 0  # %Y%m%d
-        self.end_date = 0  # %Y%m%d
+        self._start_date = 0  # %Y%m%d
+        self._end_date = 0  # %Y%m%d
         self.public_notes = ''
         self.internal_comms = ''
         self.opt_id = 0
@@ -319,15 +300,9 @@ class IncentiveEntity(RtEntity):
         elif raw_ent.schema_id == '47505':
             self.interest = float(raw_ent.data_value)
         elif raw_ent.schema_id == '45102':
-            if check_date_format(raw_ent.data_value):
-                self.start_date = int(raw_ent.data_value)
-            else:
-                raise ValueError('{} doesnt meet the start_date criteria'.format(raw_ent.data_value))
+            self.start_date = int(raw_ent.data_value)
         elif raw_ent.schema_id == '45103':
-            if check_date_format(raw_ent.data_value):
-                self.end_date = int(raw_ent.data_value)
-            else:
-                raise ValueError('{} doesnt meet the end_date criteria'.format(raw_ent.data_value))
+            self.end_date = int(raw_ent.data_value)
         elif raw_ent.schema_id == '51208':
             self.dealer_contrib_msrp = float(raw_ent.data_value)
         elif raw_ent.schema_id == '51209':
@@ -341,38 +316,41 @@ class IncentiveEntity(RtEntity):
         else:
             raise NotImplementedError('schema_id ' + raw_ent.schema_id + ' is not implemented')
 
-    def _scavenge_common_data(self, raw_ent: raw_ents.EscbrBrPublicIncentiveEntity):
-        self.vehicle_id = raw_ent.vehicle_id
-        self.code = raw_ent.option_code
-        self.opt_id = raw_ent.option_id
-        self.rule_type = raw_ent.rule_type
-        self.opt_rule = raw_ent.option_rule
+    def _scavenge_cs_rt_incentives(self, raw_ent: raw_ents.CsRtIncentivesEntity):
+        self.vehicle_id = '{0}{1}'.format(int(raw_ent.uid), raw_ent.data_date)
+        self.jato_value = raw_ent.jato_val
+        self.take_rate = raw_ent.take_rate
+        self.code = raw_ent.inc_aaaaa
+        self.manuf_contrib_msrp = raw_ent.manuf_cont
+        self.dealer_contrib_msrp = raw_ent.dealer_cont
+        self.gov_contrib_msrp = 0.0
+        self._start_date = raw_ent.start  # %Y%m%d
+        self._end_date = raw_ent.end  # %Y%m%d
+        self.deposit_perc = raw_ent.perc_dep
+        self.max_term = raw_ent.months_pay
+        self.interest = raw_ent.int_rate
+        self.public_notes = raw_ent.public_notes
+        self.internal_comms = raw_ent.internal_comments
+        self.opt_id = 0
+        self.rule_type = 0
+        self.opt_rule = ''
+
+    def _scavenge_common_data(self, raw_ent: raw_ents.RawEntity):
+        if isinstance(raw_ent, raw_ents.EscbrBrPublicIncentiveEntity):
+            self.vehicle_id = raw_ent.vehicle_id
+            self.code = raw_ent.option_code
+            self.opt_id = raw_ent.option_id
+            self.rule_type = raw_ent.rule_type
+            self.opt_rule = raw_ent.option_rule
+        elif isinstance(raw_ent, raw_ents.CsRtIncentivesEntity):
+            self._scavenge_cs_rt_incentives(raw_ent)
 
 
 class TpEntity(RtEntity):
-    def __init__(self, raw_ent_list: [raw_ents.MsAccessTpEntity]=None):
+    def __init__(self, raw_ent_list: [raw_ents.CsRtTpCompletaEntity]=None):
         self._sample_date = 20000101  # %Y%m%d
         self._transaction_price = 0.0
         super().__init__(raw_ent_list)
-
-    @property
-    def sample_date(self):
-        return self._sample_date
-
-    @sample_date.setter
-    def sample_date(self, value: str):
-        if check_date_format(value) and int(value) > 20000100:
-            self._sample_date = value
-        else:
-            raise ValueError('{} doesnt meet the sample_date criteria'.format(value))
-
-    @property
-    def transaction_price(self):
-        return self._transaction_price
-
-    @transaction_price.setter
-    def transaction_price(self, value: str):
-        self._transaction_price = float(value)
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.sample_date), str(self.transaction_price)])
@@ -380,7 +358,7 @@ class TpEntity(RtEntity):
     def _decode_raw_ent(self, raw_ent: raw_ents.RawEntity):
         pass
 
-    def _scavenge_common_data(self, raw_ent: raw_ents.MsAccessTpEntity):
+    def _scavenge_common_data(self, raw_ent: raw_ents.CsRtTpCompletaEntity):
         raw_ent.uid = str(int(float(raw_ent.uid)))  # get rid of the '.00' that comes from MS Access
         self.vehicle_id = '{0}{1}'.format(raw_ent.uid, raw_ent.data_date)
         self.sample_date = raw_ent.sample_date
