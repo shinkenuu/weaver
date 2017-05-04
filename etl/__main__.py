@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import argparse
-from ETL import etl
+from etl import main
 
 #  TODO fix target to accept just one value
 if __name__ == '__main__':
@@ -23,5 +23,5 @@ if __name__ == '__main__':
         arg_parser.add_argument('--source', nargs='?', type=str, help='source name: [ftp|mssql|msaccess]')
         arg_parser.add_argument('--target', nargs=1, type=str, help='[<database>.<table>]')
     parsed_args = arg_parser.parse_args(sys.argv[1:])
-    etl.etl(command=parsed_args.command[0], target=parsed_args.target[0],
-            source=parsed_args.source[0], chain_until=parsed_args.chain)
+    main.etl(command=parsed_args.command[0], target=parsed_args.target[0],
+             source=parsed_args.source[0], chain_until=parsed_args.chain)

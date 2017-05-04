@@ -1,2 +1,4 @@
 env/*
 access.py
+.idea/
+__pycache__

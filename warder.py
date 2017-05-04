@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import traceback
 from datetime import datetime
@@ -49,6 +49,8 @@ class Warder(object, metaclass=Singleton):
         :param exception: The exception object
         :return: 
         """
-        self.ward_progress(task_name, 'error: {}'.format(exception), traceback.extract_tb(exception.__traceback__))
-        pigeon.alert_tower('{}\n\n{}'.format(traceback.extract_stack(),
-                                             traceback.extract_tb(exception.__traceback__)))
+        error_type_name = str(type(exception)).split("'")[1]
+        self.ward_progress(task_name,
+                           '{0}: {1}'.format(error_type_name, str(exception)),
+                           traceback.extract_tb(exception.__traceback__))
+        pigeon.alert_tower('{0}: {1}'.format(error_type_name, str(exception)))
