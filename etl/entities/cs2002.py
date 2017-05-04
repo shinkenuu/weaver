@@ -1,7 +1,7 @@
-from ETL.Entities import raw as raw
+from . import base
 
 
-class Cs2002Entity(raw.RawEntity):
+class Cs2002Entity(base.RawEntity, base.AssemblableEntity):
     """
         CS_2002 entity
     """
@@ -27,11 +27,11 @@ class Cs2002Entity(raw.RawEntity):
         """
         self.vehicle_id, self.schema_id, self.data_value = iterable
 
-    def belongs_with(self, other):
+    def assemblies_with(self, other):
         return self.vehicle_id == other.vehicle_id
 
 
-class EscbrBrPublicIncentiveEntity(Cs2002Entity):
+class EscbrBrPublicIncentiveEntity(Cs2002Entity, base.AssemblableEntity):
     """
         Escbr_BR_Public_Incentive entity
     """
@@ -53,5 +53,5 @@ class EscbrBrPublicIncentiveEntity(Cs2002Entity):
         self.vehicle_id, self.schema_id, self.data_value, self.option_id, self.option_code, self.rule_type,\
             self.option_rule = iterable
 
-    def belongs_with(self, other):
-        return super().belongs_with(other) and other.option_id == self.option_id
+    def assemblies_with(self, other):
+        return super().assemblies_with(other) and other.option_id == self.option_id
