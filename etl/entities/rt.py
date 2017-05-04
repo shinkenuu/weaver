@@ -1,9 +1,8 @@
-#!/usr/bin/env python
-
 import abc
 import re
 
-from ETL.Transform.rawents import cs2002 as raw_cs2002
+
+from . import base, cs2002 as cs2002_ents, msaccess as msaccess_ents
 
 version_state_dict = {
     '-': '',
@@ -136,42 +135,15 @@ def compose(current: str, new: str):
 
 class RtEntity(object, metaclass=abc.ABCMeta):
     """
-        Base RT entity that satisfy the needs of any child RT entity
+        Base RT entity that RT entity child must inherit of
     """
     def __init__(self):
-        self._vehicle_id = 0
-
-    @abc.abstractmethod
-    def _decode_raw_ent(self, raw_ent: raw_ents.RawEntity):
-        """
-            Populates this Entity with raw data from an raw entity
-        :return:
-        """
-        pass
-
-    @abc.abstractmethod
-    def _scavenge_common_data(self, raw_ent: raw_ents.RawEntity):
-        """
-            Populates this Entity with data common to all raw_ents yet to be part of this entity
-        :return:
-        """
-        pass
-
-    def assembly(self, raw_ent_array: [raw_ents.RawEntity]):
-        """
-            Assemblies data from raw entities and store into the child Entity
-        :param raw_ent_array: list of raw entities to compose the child entity 
-        :return:
-        """
-        self._scavenge_common_data(raw_ent_array[0])
-        if len(raw_ent_array) == 1:
-            return
-        for raw_ent in raw_ent_array:
-            self._decode_raw_ent(raw_ent)
+        self.vehicle_id = 0
 
 
-class VehicleEntity(RtEntity):
-    def __init__(self, raw_ent_array: [raw_cs2002.Cs2002Entity]=None):
+class VehicleEntity(RtEntity, base.AssemblerEntity):
+    def __init__(self, cs2002_ent_list: [cs2002_ents.Cs2002Entity]=None):
+        super().__init__()
         self.uid = 0
         self.data_date = 0  # %Y%m%d
         self.version_state = ''
@@ -190,7 +162,8 @@ class VehicleEntity(RtEntity):
         self.driven_wheels = ''
         self.liters = 0.0
         self.msrp = 0.0
-        super().__init__(raw_ent_array)
+        if cs2002_ent_list:
+            self.assembly(cs2002_ent_list=cs2002_ent_list)
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.uid), str(self.data_date), str(self.version_state),
@@ -199,70 +172,68 @@ class VehicleEntity(RtEntity):
                          str(self.number_of_doors), str(self.body_type), str(self.fuel_type), str(self.other_fuel_type),
                          str(self.transmission_description), str(self.driven_wheels), str(self.liters), str(self.msrp)])
 
-    def _decode_raw_ent(self, raw_ent: raw_ents.Cs2002Entity):
+    def _decode_raw_ent(self, cs2002_ent: cs2002_ents.Cs2002Entity):
         """
         Decodes schema_id from raw_entEntity and assigns its data_value to the right SpecsEntity attribute
         Raises NotImplementedError with schema_id is not coded
-        :param raw_ent: raw_ent from extraction of SCBR
+        :param cs2002_ent: Cs2002 entity
         :return: 
         """
-        self.vehicle_id = raw_ent.vehicle_id
-        if raw_ent.schema_id == '101':
-            self.uid = int(raw_ent.data_value)
-        elif raw_ent.schema_id == '104':
-            if raw_ents.check_date_format(raw_ent.data_value):
-                self.data_date = int(raw_ent.data_value)
-            else:
-                raise ValueError('{} doesnt meet the data_date criteria'.format(raw_ent.data_value))
-        elif raw_ent.schema_id == '105':
+        if cs2002_ent.schema_id == '101':
+            self.uid = int(cs2002_ent.data_value)
+        elif cs2002_ent.schema_id == '104':
+            self.data_date = int(cs2002_ent.data_value)
+        elif cs2002_ent.schema_id == '105':
             self.version_state = compose(current=self.version_state,
-                                         new=version_state_dict[raw_ent.data_value])
-            if raw_ent.data_value == 'G':  # outgoing flag
+                                         new=version_state_dict[cs2002_ent.data_value])
+            if cs2002_ent.data_value == 'G':  # outgoing flag
                 self.outgoing = True
-        elif raw_ent.schema_id == '111':
-            self.make = raw_ent.data_value
-        elif raw_ent.schema_id == '112':
-            self.model = raw_ent.data_value
-        elif raw_ent.schema_id == '302':
-            self.version = version_regex.sub('', raw_ent.data_value)
-        elif raw_ent.schema_id == '57108':
-            if raw_ents.check_date_format(raw_ent.data_value):
-                self.production_year = int(raw_ent.data_value)
-            else:
-                raise ValueError('{} doesnt meet the production_year criteria'.format(raw_ent.data_value))
-        elif raw_ent.schema_id == '108':
-            if raw_ents.check_date_format(raw_ent.data_value):
-                self.model_year = int(raw_ent.data_value)
-            else:
-                raise ValueError('{} doesnt meet the model_year criteria'.format(raw_ent.data_value))
-        elif raw_ent.schema_id == '402':
-            self.trim_level = raw_ent.data_value
-        elif raw_ent.schema_id == '602':
-            self.number_of_doors = int(raw_ent.data_value)
-        elif raw_ent.schema_id == '603':
-            self.body_type = body_type_dict[raw_ent.data_value]
-        elif raw_ent.schema_id == '8702':
-            self.fuel_type = fuel_type_dict[raw_ent.data_value]
-        elif raw_ent.schema_id == '8703':
-            self.other_fuel_type = fuel_type_dict[raw_ent.data_value]
-        elif raw_ent.schema_id == '20624':
+        elif cs2002_ent.schema_id == '111':
+            self.make = cs2002_ent.data_value
+        elif cs2002_ent.schema_id == '112':
+            self.model = cs2002_ent.data_value
+        elif cs2002_ent.schema_id == '302':
+            self.version = version_regex.sub('', cs2002_ent.data_value)
+        elif cs2002_ent.schema_id == '57108':
+            self.production_year = int(cs2002_ent.data_value)
+        elif cs2002_ent.schema_id == '108':
+            self.model_year = int(cs2002_ent.data_value)
+        elif cs2002_ent.schema_id == '402':
+            self.trim_level = cs2002_ent.data_value
+        elif cs2002_ent.schema_id == '602':
+            self.number_of_doors = int(cs2002_ent.data_value)
+        elif cs2002_ent.schema_id == '603':
+            self.body_type = body_type_dict[cs2002_ent.data_value]
+        elif cs2002_ent.schema_id == '8702':
+            self.fuel_type = fuel_type_dict[cs2002_ent.data_value]
+        elif cs2002_ent.schema_id == '8703':
+            self.other_fuel_type = fuel_type_dict[cs2002_ent.data_value]
+        elif cs2002_ent.schema_id == '20624':
             self.transmission_description = compose(current=self.transmission_description,
-                                                    new=transmission_type_dict[raw_ent.data_value])
-        elif raw_ent.schema_id == '6502':
-            self.driven_wheels = driven_wheels_dict[raw_ent.data_value]
-        elif raw_ent.schema_id == '7403':
-            self.liters = float(raw_ent.data_value)
-        elif raw_ent.schema_id == '902':
-            self.msrp = float(raw_ent.data_value)
+                                                    new=transmission_type_dict[cs2002_ent.data_value])
+        elif cs2002_ent.schema_id == '6502':
+            self.driven_wheels = driven_wheels_dict[cs2002_ent.data_value]
+        elif cs2002_ent.schema_id == '7403':
+            self.liters = float(cs2002_ent.data_value)
+        elif cs2002_ent.schema_id == '902':
+            self.msrp = float(cs2002_ent.data_value)
         else:
-            raise NotImplementedError('schema_id ' + raw_ent.schema_id + ' is not implemented')
+            raise NotImplementedError('schema_id {0} is not implemented'.format(str(cs2002_ent.schema_id)))
 
-    def _scavenge_common_data(self, raw_ent: raw_ents.Cs2002Entity):
+    def scavenge_common_data(self, raw_ent: cs2002_ents.Cs2002Entity):
         self.vehicle_id = raw_ent.vehicle_id
 
+    def assembly(self, cs2002_ent_list: [cs2002_ents.Cs2002Entity]):
+        if len(cs2002_ent_list) < 1:
+            raise IndexError("VehicleEntity's cs2002_ent_list cannot be empty")
+        self.scavenge_common_data(cs2002_ent_list[0])
+        for ent in cs2002_ent_list:
+            self._decode_raw_ent(ent)
 
-class IncentiveEntity(RtEntity):
-    def __init__(self, raw_ent_array: [raw_ents.RawEntity]=None):
+
+class IncentiveEntity(RtEntity, base.AssemblerEntity):
+    def __init__(self, raw_ent_list: [base.RawEntity]=None):
+        super().__init__()
         self.jato_value = 0.0
         self.take_rate = 0.0
         self.code = ''
@@ -279,7 +250,11 @@ class IncentiveEntity(RtEntity):
         self.opt_id = 0
         self.rule_type = 0
         self.opt_rule = ''
-        super().__init__(raw_ent_array)
+        if raw_ent_list:
+            if isinstance(raw_ent_list[0], cs2002_ents.EscbrBrPublicIncentiveEntity):
+                self.assembly(raw_ent_list)
+            elif isinstance(raw_ent_list[0], msaccess_ents.CsRtIncentivesEntity):
+                self.from_msaccess_cs_rt_incentives(raw_ent_list[0])
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.jato_value), str(self.take_rate), str(self.code),
@@ -288,78 +263,80 @@ class IncentiveEntity(RtEntity):
                          str(self.end_date), str(self.public_notes), str(self.internal_comms), str(self.opt_id),
                          str(self.rule_type), str(self.opt_rule)])
 
-    def _decode_raw_ent(self, raw_ent: raw_ents.EscbrBrPublicIncentiveEntity):
-        if raw_ent.schema_id == '47002':
-            self.jato_value = float(raw_ent.data_value)
-        elif raw_ent.schema_id == '47102':
-            self.take_rate = float(raw_ent.data_value)
-        elif raw_ent.schema_id == '47508':
-            self.deposit_perc = float(raw_ent.data_value)
-        elif raw_ent.schema_id == '47504':
-            self.max_term = float(raw_ent.data_value)
-        elif raw_ent.schema_id == '47505':
-            self.interest = float(raw_ent.data_value)
-        elif raw_ent.schema_id == '45102':
-            self.start_date = int(raw_ent.data_value)
-        elif raw_ent.schema_id == '45103':
-            self.end_date = int(raw_ent.data_value)
-        elif raw_ent.schema_id == '51208':
-            self.dealer_contrib_msrp = float(raw_ent.data_value)
-        elif raw_ent.schema_id == '51209':
-            self.manuf_contrib_msrp = float(raw_ent.data_value)
-        elif raw_ent.schema_id == '51210':
-            self.gov_contrib_msrp = float(raw_ent.data_value)
-        elif raw_ent.schema_id == '45204':
-            self.public_notes = raw_ent.data_value
-        elif raw_ent.schema_id == '45209':
-            self.internal_comms = raw_ent.data_value
+    def _decode_raw_ent(self, escbr_ent: cs2002_ents.EscbrBrPublicIncentiveEntity):
+        if escbr_ent.schema_id == '47002':
+            self.jato_value = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == '47102':
+            self.take_rate = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == '47508':
+            self.deposit_perc = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == '47504':
+            self.max_term = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == '47505':
+            self.interest = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == '45102':
+            self.start_date = int(escbr_ent.data_value)
+        elif escbr_ent.schema_id == '45103':
+            self.end_date = int(escbr_ent.data_value)
+        elif escbr_ent.schema_id == '51208':
+            self.dealer_contrib_msrp = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == '51209':
+            self.manuf_contrib_msrp = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == '51210':
+            self.gov_contrib_msrp = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == '45204':
+            self.public_notes = escbr_ent.data_value
+        elif escbr_ent.schema_id == '45209':
+            self.internal_comms = escbr_ent.data_value
         else:
-            raise NotImplementedError('schema_id ' + raw_ent.schema_id + ' is not implemented')
+            raise NotImplementedError('schema_id {0} is not implemented'.format(str(escbr_ent.schema_id)))
 
-    def _scavenge_cs_rt_incentives(self, raw_ent: raw_ents.CsRtIncentivesEntity):
-        self.vehicle_id = '{0}{1}'.format(int(raw_ent.uid), raw_ent.data_date)
-        self.jato_value = raw_ent.jato_val
-        self.take_rate = raw_ent.take_rate
-        self.code = raw_ent.inc_aaaaa
-        self.manuf_contrib_msrp = raw_ent.manuf_cont
-        self.dealer_contrib_msrp = raw_ent.dealer_cont
+    def from_msaccess_cs_rt_incentives(self, cs_rt_incentive_ent: msaccess_ents.CsRtIncentivesEntity):
+        self.vehicle_id = '{0}{1}'.format(int(cs_rt_incentive_ent.uid), cs_rt_incentive_ent.data_date)
+        self.jato_value = cs_rt_incentive_ent.jato_val
+        self.take_rate = cs_rt_incentive_ent.take_rate
+        self.code = cs_rt_incentive_ent.inc_aaaaa
+        self.manuf_contrib_msrp = cs_rt_incentive_ent.manuf_cont
+        self.dealer_contrib_msrp = cs_rt_incentive_ent.dealer_cont
         self.gov_contrib_msrp = 0.0
-        self._start_date = raw_ent.start  # %Y%m%d
-        self._end_date = raw_ent.end  # %Y%m%d
-        self.deposit_perc = raw_ent.perc_dep
-        self.max_term = raw_ent.months_pay
-        self.interest = raw_ent.int_rate
-        self.public_notes = raw_ent.public_notes
-        self.internal_comms = raw_ent.internal_comments
+        self._start_date = cs_rt_incentive_ent.start  # %Y%m%d
+        self._end_date = cs_rt_incentive_ent.end  # %Y%m%d
+        self.deposit_perc = cs_rt_incentive_ent.perc_dep
+        self.max_term = cs_rt_incentive_ent.months_pay
+        self.interest = cs_rt_incentive_ent.int_rate
+        self.public_notes = cs_rt_incentive_ent.public_notes
+        self.internal_comms = cs_rt_incentive_ent.internal_comments
         self.opt_id = 0
         self.rule_type = 0
         self.opt_rule = ''
 
-    def _scavenge_common_data(self, raw_ent: raw_ents.RawEntity):
-        if isinstance(raw_ent, raw_ents.EscbrBrPublicIncentiveEntity):
-            self.vehicle_id = raw_ent.vehicle_id
-            self.code = raw_ent.option_code
-            self.opt_id = raw_ent.option_id
-            self.rule_type = raw_ent.rule_type
-            self.opt_rule = raw_ent.option_rule
-        elif isinstance(raw_ent, raw_ents.CsRtIncentivesEntity):
-            self._scavenge_cs_rt_incentives(raw_ent)
+    def scavenge_common_data(self, escbr_ent: cs2002_ents.EscbrBrPublicIncentiveEntity):
+        self.vehicle_id = escbr_ent.vehicle_id
+        self.code = escbr_ent.option_code
+        self.opt_id = escbr_ent.option_id
+        self.rule_type = escbr_ent.rule_type
+        self.opt_rule = escbr_ent.option_rule
+
+    def assembly(self, escbr_ent_list: [cs2002_ents.EscbrBrPublicIncentiveEntity]):
+        if len(escbr_ent_list) < 1:
+            raise IndexError("IncentiveEntity's escbr_ent_list cannot be empty")
+        self.scavenge_common_data(escbr_ent=escbr_ent_list[0])
+        for escbr_ent in escbr_ent_list:
+            self._decode_raw_ent(escbr_ent=escbr_ent)
 
 
 class TpEntity(RtEntity):
-    def __init__(self, raw_ent_list: [raw_ents.CsRtTpCompletaEntity]=None):
-        self._sample_date = 20000101  # %Y%m%d
-        self._transaction_price = 0.0
-        super().__init__(raw_ent_list)
+    def __init__(self, cs_rt_tp_ent: msaccess_ents.CsRtTpCompletaEntity=None):
+        super().__init__()
+        self.sample_date = 20000101  # %Y%m%d
+        self.transaction_price = 0.0
+        if cs_rt_tp_ent:
+            self.from_cs_rt_tp_completa_ent(ent=cs_rt_tp_ent)
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.sample_date), str(self.transaction_price)])
 
-    def _decode_raw_ent(self, raw_ent: raw_ents.RawEntity):
-        pass
-
-    def _scavenge_common_data(self, raw_ent: raw_ents.CsRtTpCompletaEntity):
-        raw_ent.uid = str(int(float(raw_ent.uid)))  # get rid of the '.00' that comes from MS Access
-        self.vehicle_id = '{0}{1}'.format(raw_ent.uid, raw_ent.data_date)
-        self.sample_date = raw_ent.sample_date
-        self.transaction_price = raw_ent.transaction_price
+    def from_cs_rt_tp_completa_ent(self, ent: msaccess_ents.CsRtTpCompletaEntity):
+        self.vehicle_id = base.build_vehicle_id(ent.uid, ent.data_date)
+        self.sample_date = ent.sample_date
+        self.transaction_price = ent.transaction_price
