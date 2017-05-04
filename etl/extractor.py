@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 import abc
 import ftplib
@@ -6,7 +5,7 @@ import pymssql
 import os
 import access as acc
 
-extracted_dir_path = '/mnt/jatobrfiles/Weaver/etl/extracted/'
+EXTRACTED_DIR_PATH = '/mnt/jatobrfiles/Weaver/etl/extracted/'
 
 
 class Extractor(metaclass=abc.ABCMeta):
@@ -65,7 +64,7 @@ class SqlDataExtractor(Extractor):
     def extract(self):
         """
         Query database extracting results
-        :return: the extracted results XOR the output path
+        :return: the extracted results
         """
         # specifying charset param in pymssql.connect() raises an unknown error
         with pymssql.connect(self.access.address, self.access.username, self.access.pwd, self.db) as conn:
@@ -109,43 +108,50 @@ def extract(target: str, source: str):
     """
     def create_extractor():
         if target == 'rt.vehicles':
-            extractors = (SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'],
-                                           db='rt',
-                                           query='select * from vw_rt_vehicles_from_sscbr_cs2002'
-                                                 ' order by vehicle_id',
-                                           output_path='{}mssql/sscbr_cs2002.txt'.format(extracted_dir_path)),
-                          SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'],
-                                           db='rt',
-                                           query='select * from vw_rt_vehicles_from_nscbr_cs2002'
-                                                 ' order by vehicle_id',
-                                           output_path='{}mssql/nscbr_cs2002.txt'.format(extracted_dir_path)))
+            if source == 'mssql':
+                extractors = (SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'],
+                                               db='rt',
+                                               query='select * from vw_rt_vehicles_from_sscbr_cs2002'
+                                                     ' order by vehicle_id',
+                                               output_path='{}mssql/sscbr_cs2002.txt'.format(EXTRACTED_DIR_PATH)),
+                              SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'],
+                                               db='rt',
+                                               query='select * from vw_rt_vehicles_from_nscbr_cs2002'
+                                                     ' order by vehicle_id',
+                                               output_path='{}mssql/nscbr_cs2002.txt'.format(EXTRACTED_DIR_PATH)))
+            elif source == 'msaccess':
+                raise NotImplementedError('extraction of specs from msaccess')
+            else:
+                raise ValueError('{} is not a valid rt.vehicles source'.format(source))
             return MultiSourceExtractor(single_extractor_list=extractors)
         elif target == 'rt.incentives':
-            if source == 'msaccess':
-                raise NotImplementedError('extraction of incentives from msaccess')
-            elif source == 'mssql':
+            if source == 'mssql':
                 return SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'],
                                         db='rt',
                                         query='select * from vw_rt_incentives_from_escbr_cs2002_br_public_incentive'
                                               ' order by vehicle_id, option_id',
                                         output_path='{}mssql/escbr_cs2002_br_public_incentive.txt'.format(
-                                            extracted_dir_path))
+                                            EXTRACTED_DIR_PATH))
+            elif source == 'msaccess':
+                raise NotImplementedError('extraction of incentives from msaccess')
             else:
-                raise ValueError('{} is not a valid incentives source'.format(source))
+                raise ValueError('{} is not a valid rt.incentives source'.format(source))
         elif source == 'ftp':
             if target == 'ukvsqlbdrep01.sscbr_cs2002':
                 return FtpExtractor(acc.access_dict['jatoftp2'],
-                                    'ftp://ftp2.carspecs.jato.com/CURRENT/DATABASES/SQLSERVER/SSCBR/SSCBR_CS2002_SQL.EXE',
-                                    '{}ftp/'.format(extracted_dir_path))
+                                    'ftp://ftp2.carspecs.jato.com/CURRENT/DATABASES/SQLSERVER/SSCBR/'
+                                    'SSCBR_CS2002_SQL.EXE',
+                                    '{}ftp/'.format(EXTRACTED_DIR_PATH))
             elif target == 'ukvsqlbdrep01.nscbr_cs2002':
                 return FtpExtractor(acc.access_dict['jatoftp2'],
-                                    'ftp://ftp2.carspecs.jato.com/CURRENT/DATABASES/SQLSERVER/NSCBR/NSCBR_CS2002_SQL.EXE',
-                                    '{}ftp/'.format(extracted_dir_path))
+                                    'ftp://ftp2.carspecs.jato.com/CURRENT/DATABASES/SQLSERVER/NSCBR/'
+                                    'NSCBR_CS2002_SQL.EXE',
+                                    '{}ftp/'.format(EXTRACTED_DIR_PATH))
             elif target == 'ukvsqlbdrep01.escbr_cs2002_br_public_incentive':
                 return FtpExtractor(acc.access_dict['jatoftp2'],
                                     'ftp://ftp2.carspecs.jato.com/CUSTOMEREMBARGO/Current/Databases/SQLSERVER/SSCBR/'
                                     'Incentive_Public_BR/SSCBR_CS2002_SQL.EXE',
-                                    '{}ftp/'.format(extracted_dir_path))
+                                    '{}ftp/'.format(EXTRACTED_DIR_PATH))
         else:
             raise ValueError('{0} is not a valid source for {1} target'.format(source, target))
 

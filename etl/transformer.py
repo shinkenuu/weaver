@@ -1,25 +1,23 @@
-#!/usr/bin/env python
 
 from etl import extractor
-from . import raw_ents
-from . import rt_ents
+from etl.entities import base as base_ents, cs2002 as cs2002_ents, msaccess as msaccess_ents, rt as rt_ents
 
-transformed_dir_path = '/mnt/jatobrfiles/Weaver/etl/transformed/'
+READY_DIR_PATH = '/mnt/jatobrfiles/Weaver/etl/ready/'
 
-transformed_ent_types_dict = {
+READY_TYPES_DICT = {
     'rt.vehicles': rt_ents.VehicleEntity,
     'rt.incentives': rt_ents.IncentiveEntity,
     'rt.tp': rt_ents.TpEntity
 }
 
-raw_ent_types_dict = {
-    'mssql|rt.vehicles': raw_ents.Cs2002Entity,
-    'mssql|rt.incentives': raw_ents.EscbrBrPublicIncentiveEntity,
-    'msaccess|rt.incentives': raw_ents.CsRtIncentivesEntity,
-    'msaccess|rt.tp': raw_ents.CsRtTpCompletaEntity
+RAW_TYPES_DICT = {
+    'mssql|rt.vehicles': cs2002_ents.Cs2002Entity,
+    'mssql|rt.incentives': cs2002_ents.EscbrBrPublicIncentiveEntity,
+    'msaccess|rt.incentives': msaccess_ents.CsRtIncentivesEntity,
+    'msaccess|rt.tp': msaccess_ents.CsRtTpCompletaEntity
 }
 
-necessary_files_dict = {
+EXTRACTED_FILES_DICT = {
     'mssql|rt.vehicles': ('sscbr_cs2002.txt', 'nscbr_cs2002.txt'),
     'mssql|rt.incentives': ('escbr_cs2002_br_public_incentive.txt', ),
     'msaccess|rt.incentives': ('CS_RT_INCENTIVES.txt', ),
@@ -27,63 +25,63 @@ necessary_files_dict = {
 }
 
 
-def _transform_from_file(file_path: str, into_raw_type: type):
-    ents = []
-    with open(file_path, 'r') as file:
-        for line in file:
-            raw_ent = into_raw_type(raw_data=line)
-            ents.append(raw_ent)
-    return ents
-
-
-def _transform_from_iterable(extracted_data: list, into_raw_type: type):
-    ents = []
-    for data in extracted_data:
-        raw_ent = into_raw_type(raw_data=data)
-        ents.append(raw_ent)
-    return ents
-
-
-def _transform_from_raw(raw_ent_array: list, into_type: type):
-    transformed_ents = []
-    ents_to_assemble = []
-    for raw_ent in raw_ent_array:
-        # if there is no raw_ent to compare yet OR if this raw_ent belongs with the current list of raw_ents
-        if len(ents_to_assemble) == 0 or ents_to_assemble[0].belongs_with(raw_ent):
-            ents_to_assemble.append(raw_ent)
-        else:
-            transformed_ent = into_type(ents_to_assemble)
-            transformed_ents.append(transformed_ent)
-            ents_to_assemble.clear()
-            ents_to_assemble.append(raw_ent)
-    return transformed_ents
-
-
 def transform(into: str, source: str, input_data: list):
     """
-    Transforms raw entities from files into final ents in the file read to bulk insert
+    Transforms raw entities into entities ready to bulk insert
     :param into: The final entity. Usage: database.table
     :param source: The data source
     :param input_data: file path or tuple with extracted data
     :return: 
     """
+    def from_file(file_path: str, into_raw_type: type):
+        ents = []
+        with open(file_path, 'r') as file:
+            for line in file:
+                raw_ent = into_raw_type(raw_data=line)
+                ents.append(raw_ent)
+        return ents
+
+    def from_memory(read_data: list, into_raw_type: type):
+        ents = []
+        for data in read_data:
+            raw_ent = into_raw_type(raw_data=data)
+            ents.append(raw_ent)
+        return ents
+
+    def from_raw(raw_ent_list: [base_ents.RawEntity], into_ready_type: type):
+        ready_ents = []
+        if isinstance(into_ready_type(), base_ents.AssemblerEntity):
+            ents_to_assemble = []
+            for assemblable_ent in raw_ent_list:
+                # if there is no ent to assembly yet OR if this ent assemblies with the current assemblables
+                if len(ents_to_assemble) == 0 or ents_to_assemble[0].assemblies_with(assemblable_ent):
+                    ents_to_assemble.append(assemblable_ent)
+                else:
+                    ready_ent = into_ready_type(ents_to_assemble)
+                    ready_ents.append(ready_ent)
+                    ents_to_assemble.clear()
+                    ents_to_assemble.append(assemblable_ent)
+        else:
+            for raw_ent in raw_ent_list:
+                ready_ent = into_ready_type(raw_ent)
+                ready_ents.append(ready_ent)
+        return ready_ents
+
     key = '{0}|{1}'.format(source, into)
     if input_data:
-        input_data = _transform_from_iterable(extracted_data=input_data, into_raw_type=raw_ent_types_dict[into])
+        input_data = from_memory(read_data=input_data, into_raw_type=RAW_TYPES_DICT[key])
     else:
         input_data = []
-        for necessary_file in necessary_files_dict[key]:
-                input_data.extend(_transform_from_file(
-                    file_path='{0}{1}/{2}'.format(extractor.extracted_dir_path, source, necessary_file),
-                    into_raw_type=raw_ent_types_dict[key]))
-    input_data = _transform_from_raw(input_data, into_type=transformed_ent_types_dict[into])
-    _write_ents_to_disc(input_data, '{0}{1}.txt'.format(transformed_dir_path, into))
+        for necessary_file in EXTRACTED_FILES_DICT[key]:
+                input_data.extend(from_file(
+                    file_path='{0}{1}/{2}'.format(extractor.EXTRACTED_DIR_PATH, source, necessary_file),
+                    into_raw_type=RAW_TYPES_DICT[key]))
+    input_data = from_raw(raw_ent_list=input_data, into_ready_type=READY_TYPES_DICT[into])
+    _write_ents_to_disc(input_data, '{0}{1}.txt'.format(READY_DIR_PATH, into))
 
 
-def _write_ents_to_disc(ents, output_path: str):
-    output = open(output_path, 'w')
-    output.truncate()
-    doc = ''
-    for ent in ents:
-        doc += str(ent) + '\n'
-    output.write(doc)
+def _write_ents_to_disc(ents: list, output_path: str):
+    doc = '\n'.join(str(ent) for ent in ents)
+    with open(output_path, 'w') as file:
+        file.truncate()
+        file.write(doc)
