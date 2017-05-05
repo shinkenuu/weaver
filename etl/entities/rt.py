@@ -67,7 +67,8 @@ body_type_dict = {
     'TR': 'comercial pesado',
     'VA': 'furgão',
     'WH': 'chassis',
-    'WT': 'chassis cabine com plataforma'
+    'WT': 'chassis cabine com plataforma',
+    'WV': 'furgão com janelas'
 }
 
 driven_wheels_dict = {
@@ -179,43 +180,43 @@ class VehicleEntity(RtEntity, base.AssemblerEntity):
         :param cs2002_ent: Cs2002 entity
         :return: 
         """
-        if cs2002_ent.schema_id == '101':
+        if cs2002_ent.schema_id == 101:
             self.uid = int(cs2002_ent.data_value)
-        elif cs2002_ent.schema_id == '104':
+        elif cs2002_ent.schema_id == 104:
             self.data_date = int(cs2002_ent.data_value)
-        elif cs2002_ent.schema_id == '105':
+        elif cs2002_ent.schema_id == 105:
             self.version_state = compose(current=self.version_state,
                                          new=version_state_dict[cs2002_ent.data_value])
             if cs2002_ent.data_value == 'G':  # outgoing flag
                 self.outgoing = True
-        elif cs2002_ent.schema_id == '111':
+        elif cs2002_ent.schema_id == 111:
             self.make = cs2002_ent.data_value
-        elif cs2002_ent.schema_id == '112':
+        elif cs2002_ent.schema_id == 112:
             self.model = cs2002_ent.data_value
-        elif cs2002_ent.schema_id == '302':
+        elif cs2002_ent.schema_id == 302:
             self.version = version_regex.sub('', cs2002_ent.data_value)
-        elif cs2002_ent.schema_id == '57108':
+        elif cs2002_ent.schema_id == 57108:
             self.production_year = int(cs2002_ent.data_value)
-        elif cs2002_ent.schema_id == '108':
+        elif cs2002_ent.schema_id == 108:
             self.model_year = int(cs2002_ent.data_value)
-        elif cs2002_ent.schema_id == '402':
+        elif cs2002_ent.schema_id == 402:
             self.trim_level = cs2002_ent.data_value
-        elif cs2002_ent.schema_id == '602':
+        elif cs2002_ent.schema_id == 602:
             self.number_of_doors = int(cs2002_ent.data_value)
-        elif cs2002_ent.schema_id == '603':
+        elif cs2002_ent.schema_id == 603:
             self.body_type = body_type_dict[cs2002_ent.data_value]
-        elif cs2002_ent.schema_id == '8702':
+        elif cs2002_ent.schema_id == 8702:
             self.fuel_type = fuel_type_dict[cs2002_ent.data_value]
-        elif cs2002_ent.schema_id == '8703':
+        elif cs2002_ent.schema_id == 8703:
             self.other_fuel_type = fuel_type_dict[cs2002_ent.data_value]
-        elif cs2002_ent.schema_id == '20624':
+        elif cs2002_ent.schema_id == 20624:
             self.transmission_description = compose(current=self.transmission_description,
                                                     new=transmission_type_dict[cs2002_ent.data_value])
-        elif cs2002_ent.schema_id == '6502':
+        elif cs2002_ent.schema_id == 6502:
             self.driven_wheels = driven_wheels_dict[cs2002_ent.data_value]
-        elif cs2002_ent.schema_id == '7403':
+        elif cs2002_ent.schema_id == 7403:
             self.liters = float(cs2002_ent.data_value)
-        elif cs2002_ent.schema_id == '902':
+        elif cs2002_ent.schema_id == 902:
             self.msrp = float(cs2002_ent.data_value)
         else:
             raise NotImplementedError('schema_id {0} is not implemented'.format(str(cs2002_ent.schema_id)))
@@ -232,7 +233,7 @@ class VehicleEntity(RtEntity, base.AssemblerEntity):
 
 
 class IncentiveEntity(RtEntity, base.AssemblerEntity):
-    def __init__(self, raw_ent_list: [base.RawEntity]=None):
+    def __init__(self, raw_ent_list: [base.RawEntity]=None, raw_ent: base.RawEntity=None):
         super().__init__()
         self.jato_value = 0.0
         self.take_rate = 0.0
@@ -243,18 +244,18 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         self.deposit_perc = 0.0
         self.max_term = 0
         self.interest = 0.0
-        self._start_date = 0  # %Y%m%d
-        self._end_date = 0  # %Y%m%d
+        self.start_date = 0  # %Y%m%d
+        self.end_date = 0  # %Y%m%d
         self.public_notes = ''
         self.internal_comms = ''
         self.opt_id = 0
         self.rule_type = 0
         self.opt_rule = ''
         if raw_ent_list:
-            if isinstance(raw_ent_list[0], cs2002_ents.EscbrBrPublicIncentiveEntity):
-                self.assembly(raw_ent_list)
-            elif isinstance(raw_ent_list[0], msaccess_ents.CsRtIncentivesEntity):
-                self.from_msaccess_cs_rt_incentives(raw_ent_list[0])
+            self.assembly(raw_ent_list)
+        elif raw_ent:
+                if isinstance(raw_ent, msaccess_ents.CsRtIncentivesEntity):
+                    self.from_msaccess_cs_rt_incentives(raw_ent)
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.jato_value), str(self.take_rate), str(self.code),
@@ -264,29 +265,29 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
                          str(self.rule_type), str(self.opt_rule)])
 
     def _decode_raw_ent(self, escbr_ent: cs2002_ents.EscbrBrPublicIncentiveEntity):
-        if escbr_ent.schema_id == '47002':
+        if escbr_ent.schema_id == 47002:
             self.jato_value = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == '47102':
+        elif escbr_ent.schema_id == 47102:
             self.take_rate = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == '47508':
+        elif escbr_ent.schema_id == 47508:
             self.deposit_perc = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == '47504':
+        elif escbr_ent.schema_id == 47504:
             self.max_term = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == '47505':
+        elif escbr_ent.schema_id == 47505:
             self.interest = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == '45102':
+        elif escbr_ent.schema_id == 45102:
             self.start_date = int(escbr_ent.data_value)
-        elif escbr_ent.schema_id == '45103':
+        elif escbr_ent.schema_id == 45103:
             self.end_date = int(escbr_ent.data_value)
-        elif escbr_ent.schema_id == '51208':
+        elif escbr_ent.schema_id == 51208:
             self.dealer_contrib_msrp = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == '51209':
+        elif escbr_ent.schema_id == 51209:
             self.manuf_contrib_msrp = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == '51210':
+        elif escbr_ent.schema_id == 51210:
             self.gov_contrib_msrp = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == '45204':
+        elif escbr_ent.schema_id == 45204:
             self.public_notes = escbr_ent.data_value
-        elif escbr_ent.schema_id == '45209':
+        elif escbr_ent.schema_id == 45209:
             self.internal_comms = escbr_ent.data_value
         else:
             raise NotImplementedError('schema_id {0} is not implemented'.format(str(escbr_ent.schema_id)))
@@ -299,8 +300,8 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         self.manuf_contrib_msrp = cs_rt_incentive_ent.manuf_cont
         self.dealer_contrib_msrp = cs_rt_incentive_ent.dealer_cont
         self.gov_contrib_msrp = 0.0
-        self._start_date = cs_rt_incentive_ent.start  # %Y%m%d
-        self._end_date = cs_rt_incentive_ent.end  # %Y%m%d
+        self.start_date = cs_rt_incentive_ent.start  # %Y%m%d
+        self.end_date = cs_rt_incentive_ent.end  # %Y%m%d
         self.deposit_perc = cs_rt_incentive_ent.perc_dep
         self.max_term = cs_rt_incentive_ent.months_pay
         self.interest = cs_rt_incentive_ent.int_rate

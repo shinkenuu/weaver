@@ -1,6 +1,5 @@
-#!/usr/bin/env python
 
 
-def load(input_data, into: str):
+def load(into: str, source: str, input_data):
     raise NotImplementedError()
 

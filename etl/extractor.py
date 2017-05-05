@@ -1,4 +1,3 @@
-
 import abc
 import ftplib
 import pymssql
@@ -95,7 +94,7 @@ class MultiSourceExtractor(Extractor):
             raise IndexError('MultiSourceExtractor\'s extractor list is empty')
         results = []
         for extractor in self.extractors_list:
-                results.append(extractor.extract())
+                results.extend(extractor.extract())
         return results
 
 

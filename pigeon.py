@@ -6,7 +6,7 @@ import access
 scroll_template = \
     'From: {0}\n' \
     'To: {1}\n' \
-    'Subject: {2}\n{3}'
+    'Subject: {2}\n.\n{3}'
 
 
 def send_message(receivers, subject, msg):

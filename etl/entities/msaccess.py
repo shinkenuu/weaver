@@ -41,7 +41,7 @@ class MsAccessEntity(base.RawEntity):
                 self.from_iterable(iterable=row)
 
     def from_iterable(self, iterable):
-        pass
+        raise NotImplementedError()
 
 
 class CsRtIncentivesEntity(MsAccessEntity):

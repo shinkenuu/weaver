@@ -21,16 +21,16 @@ def etl(command: str, source: str, target: str, chain_until: str):
             raise ValueError('Invalid command: {}'.format(command))
         if command == 'extract':
             result = extractor.extract(source=source, target=target)
-            _warder.ward_progress('etl', 'OK', '{} completed for {}'.format(command, target))
+            _warder.ward_progress('etl', 'OK', '{} completed for {} from {}'.format(command, target, source))
             if chain_until == 'transform' or chain_until == 'load':
                 command = 'transform'
         if command == 'transform':
             result = transformer.transform(into=target, source=source, input_data=result)
-            _warder.ward_progress('etl', 'OK', '{} completed for {}'.format(command, target))
+            _warder.ward_progress('etl', 'OK', '{} completed for {} from {}'.format(command, target, source))
             if chain_until == 'load':
                 command = 'load'
         if command == 'load':
-            loader.load(input_data=result, into=target)
-            _warder.ward_progress('etl', 'OK', '{} completed for {}'.format(command, target))
+            loader.load(into=target, source=source, input_data=result)
+            _warder.ward_progress('etl', 'OK', '{} completed for {} from {}'.format(command, target, source))
     except Exception as err:
         _warder.ward_error('etl', err)

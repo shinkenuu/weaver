@@ -2,7 +2,14 @@
 from etl import extractor
 from etl.entities import base as base_ents, cs2002 as cs2002_ents, msaccess as msaccess_ents, rt as rt_ents
 
-READY_DIR_PATH = '/mnt/jatobrfiles/Weaver/etl/ready/'
+READY_FILES_ROOT_DIR_PATH = '/mnt/jatobrfiles/Weaver/etl/ready/'
+
+READY_FILES_PATH_DICT = {
+    'mssql|rt.vehicles': '{}rt/vehicles_from_mssql.txt'.format(READY_FILES_ROOT_DIR_PATH),
+    'mssql|rt.incentives': '{}rt/incentives_from_mssql.txt'.format(READY_FILES_ROOT_DIR_PATH),
+    'msaccess|rt.incentives': '{}rt/incentives_from_msaccess.txt'.format(READY_FILES_ROOT_DIR_PATH),
+    'msaccess|rt.tp': '{}rt/tp_from_msaccess.txt'.format(READY_FILES_ROOT_DIR_PATH),
+}
 
 READY_TYPES_DICT = {
     'rt.vehicles': rt_ents.VehicleEntity,
@@ -49,21 +56,24 @@ def transform(into: str, source: str, input_data: list):
         return ents
 
     def from_raw(raw_ent_list: [base_ents.RawEntity], into_ready_type: type):
+        if not raw_ent_list:
+            raise IndexError('raw_ent_list must not be empty')
         ready_ents = []
-        if isinstance(into_ready_type(), base_ents.AssemblerEntity):
+        if isinstance(raw_ent_list[0], base_ents.AssemblableEntity) \
+                and isinstance(into_ready_type(), base_ents.AssemblerEntity):
             ents_to_assemble = []
             for assemblable_ent in raw_ent_list:
                 # if there is no ent to assembly yet OR if this ent assemblies with the current assemblables
                 if len(ents_to_assemble) == 0 or ents_to_assemble[0].assemblies_with(assemblable_ent):
                     ents_to_assemble.append(assemblable_ent)
                 else:
-                    ready_ent = into_ready_type(ents_to_assemble)
+                    ready_ent = into_ready_type(raw_ent_list=ents_to_assemble)
                     ready_ents.append(ready_ent)
                     ents_to_assemble.clear()
                     ents_to_assemble.append(assemblable_ent)
         else:
             for raw_ent in raw_ent_list:
-                ready_ent = into_ready_type(raw_ent)
+                ready_ent = into_ready_type(raw_ent=raw_ent)
                 ready_ents.append(ready_ent)
         return ready_ents
 
@@ -77,7 +87,7 @@ def transform(into: str, source: str, input_data: list):
                     file_path='{0}{1}/{2}'.format(extractor.EXTRACTED_DIR_PATH, source, necessary_file),
                     into_raw_type=RAW_TYPES_DICT[key]))
     input_data = from_raw(raw_ent_list=input_data, into_ready_type=READY_TYPES_DICT[into])
-    _write_ents_to_disc(input_data, '{0}{1}.txt'.format(READY_DIR_PATH, into))
+    _write_ents_to_disc(input_data, READY_FILES_PATH_DICT[key])
 
 
 def _write_ents_to_disc(ents: list, output_path: str):

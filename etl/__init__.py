@@ -11,4 +11,6 @@ def init_env(dir_path: str):
 
 if __name__ in ('__init__', 'etl'):
     init_env(dir_path=extractor.EXTRACTED_DIR_PATH)
-    init_env(dir_path=transformer.READY_DIR_PATH)
+    #  init_env(dir_path=transformer.READY_FILES_ROOT_DIR_PATH)
+    for key, file_path in transformer.READY_FILES_PATH_DICT.items():
+        init_env(dir_path=file_path.replace(os.path.basename(file_path), ''))

@@ -17,7 +17,10 @@ class Cs2002Entity(base.RawEntity, base.AssemblableEntity):
         :param line: the line of text to set from
         :return: 
         """
-        self.vehicle_id, self.schema_id, self.data_value = line.strip('\n').split('|')
+        split_line = line.strip('\n').split('|')
+        self.vehicle_id = int(split_line[0])
+        self.schema_id = int(split_line[1])
+        self.data_value = split_line[3]
 
     def from_iterable(self, iterable):
         """
@@ -46,8 +49,14 @@ class EscbrBrPublicIncentiveEntity(Cs2002Entity, base.AssemblableEntity):
         super().__init__(raw_data=raw_data)
 
     def from_line(self, line: str):
-        self.vehicle_id, self.schema_id, self.data_value, self.option_id, self.option_code, self.rule_type,\
-            self.option_rule = line.strip('\n').split('|')
+        split_line = line.strip('\n').split('|')
+        self.vehicle_id = int(split_line[0])
+        self.schema_id = int(split_line[1])
+        self.data_value = split_line[2]
+        self.option_id  = int(split_line[3])
+        self.option_code = split_line[4]
+        self.rule_type = int(split_line[5])
+        self.option_rule = split_line[6]
 
     def from_iterable(self, iterable: tuple):
         self.vehicle_id, self.schema_id, self.data_value, self.option_id, self.option_code, self.rule_type,\
