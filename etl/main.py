@@ -29,8 +29,9 @@ def etl(command: str, source: str, target: str, chain_until: str):
             _warder.ward_progress('etl', 'OK', '{} completed for {} from {}'.format(command, target, source))
             if chain_until == 'load':
                 command = 'load'
+                source = result
         if command == 'load':
-            loader.load(into=target, source=source, input_data=result)
-            _warder.ward_progress('etl', 'OK', '{} completed for {} from {}'.format(command, target, source))
+            loader.load(into=target, source=source)
+            _warder.ward_progress('etl', 'OK', '{} completed for {} with {}'.format(command, target, source))
     except Exception as err:
         _warder.ward_error('etl', err)
