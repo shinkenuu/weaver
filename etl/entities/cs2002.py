@@ -20,7 +20,7 @@ class Cs2002Entity(base.RawEntity, base.AssemblableEntity):
         split_line = line.strip('\n').split('|')
         self.vehicle_id = int(split_line[0])
         self.schema_id = int(split_line[1])
-        self.data_value = split_line[3]
+        self.data_value = split_line[2]
 
     def from_iterable(self, iterable):
         """

@@ -1,12 +1,10 @@
 import abc
 import re
-
-
 from . import base, cs2002 as cs2002_ents, msaccess as msaccess_ents
 
 version_state_dict = {
     '-': '',
-    '?': '?',
+    '?': '',
     'A': 'estoque',
     'C': 'alteração de moeda',
     'D': 'Mudança de nome do modelo',
@@ -28,7 +26,7 @@ version_state_dict = {
 
 body_type_dict = {
     '-': '',
-    '?': '?',
+    '?': '',
     '3C': 'tricycle',
     '4C': 'quadricycle',
     'BH': 'chassis cabine',
@@ -73,7 +71,7 @@ body_type_dict = {
 
 driven_wheels_dict = {
     '-': '',
-    '?': '?',
+    '?': '',
     '4': '4x4',
     'D': 'direta',
     'F': 'dianteira',
@@ -82,7 +80,7 @@ driven_wheels_dict = {
 
 fuel_type_dict = {
     '-': '',
-    '?': '?',
+    '?': '',
     '1': 'mistura de etanol',
     '2': 'mistura de biodiesel',
     '3': 'mistura de metanol',
@@ -105,7 +103,7 @@ fuel_type_dict = {
 
 transmission_type_dict = {
     '-': '',
-    '?': '?',
+    '?': '',
     'A': 'automática',
     'C': 'CVT',
     'D': 'dupla embreagem - somente automática',
@@ -143,7 +141,7 @@ class RtEntity(object, metaclass=abc.ABCMeta):
 
 
 class VehicleEntity(RtEntity, base.AssemblerEntity):
-    def __init__(self, cs2002_ent_list: [cs2002_ents.Cs2002Entity]=None):
+    def __init__(self, raw_ent_list: [cs2002_ents.Cs2002Entity]=None):
         super().__init__()
         self.uid = 0
         self.data_date = 0  # %Y%m%d
@@ -163,8 +161,8 @@ class VehicleEntity(RtEntity, base.AssemblerEntity):
         self.driven_wheels = ''
         self.liters = 0.0
         self.msrp = 0.0
-        if cs2002_ent_list:
-            self.assembly(cs2002_ent_list=cs2002_ent_list)
+        if raw_ent_list:
+            self.assembly(cs2002_ent_list=raw_ent_list)
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.uid), str(self.data_date), str(self.version_state),
@@ -235,6 +233,7 @@ class VehicleEntity(RtEntity, base.AssemblerEntity):
 class IncentiveEntity(RtEntity, base.AssemblerEntity):
     def __init__(self, raw_ent_list: [base.RawEntity]=None, raw_ent: base.RawEntity=None):
         super().__init__()
+        self.data_date = 0  # %Y%m%d
         self.jato_value = 0.0
         self.take_rate = 0.0
         self.code = ''
@@ -243,7 +242,7 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         self.gov_contrib_msrp = 0.0
         self.deposit_perc = 0.0
         self.max_term = 0
-        self.interest = 0.0
+        self.interest_perc = 0.0
         self.start_date = 0  # %Y%m%d
         self.end_date = 0  # %Y%m%d
         self.public_notes = ''
@@ -258,33 +257,35 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
                     self.from_msaccess_cs_rt_incentives(raw_ent)
 
     def __str__(self):
-        return '|'.join([str(self.vehicle_id), str(self.jato_value), str(self.take_rate), str(self.code),
-                         str(self.dealer_contrib_msrp), str(self.manuf_contrib_msrp), str(self.gov_contrib_msrp),
-                         str(self.deposit_perc), str(self.max_term), str(self.interest), str(self.start_date),
-                         str(self.end_date), str(self.public_notes), str(self.internal_comms), str(self.opt_id),
-                         str(self.rule_type), str(self.opt_rule)])
+        return '|'.join([str(self.vehicle_id), str(self.data_date), str(self.jato_value), str(self.take_rate),
+                         str(self.code), str(self.dealer_contrib_msrp), str(self.gov_contrib_msrp),
+                         str(self.manuf_contrib_msrp), str(self.interest_perc), str(self.deposit_perc),
+                         str(self.max_term), str(self.start_date), str(self.end_date), str(self.public_notes),
+                         str(self.internal_comms), str(self.opt_id), str(self.rule_type), str(self.opt_rule)])
 
     def _decode_raw_ent(self, escbr_ent: cs2002_ents.EscbrBrPublicIncentiveEntity):
+        if escbr_ent.schema_id == 45112:
+            self.data_date = int(escbr_ent.data_value)
         if escbr_ent.schema_id == 47002:
             self.jato_value = float(escbr_ent.data_value)
         elif escbr_ent.schema_id == 47102:
             self.take_rate = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == 51208:
+            self.dealer_contrib_msrp = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == 51210:
+            self.gov_contrib_msrp = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == 51209:
+            self.manuf_contrib_msrp = float(escbr_ent.data_value)
+        elif escbr_ent.schema_id == 47505:
+            self.interest_perc = float(escbr_ent.data_value)
         elif escbr_ent.schema_id == 47508:
             self.deposit_perc = float(escbr_ent.data_value)
         elif escbr_ent.schema_id == 47504:
-            self.max_term = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 47505:
-            self.interest = float(escbr_ent.data_value)
+            self.max_term = int(escbr_ent.data_value)
         elif escbr_ent.schema_id == 45102:
             self.start_date = int(escbr_ent.data_value)
         elif escbr_ent.schema_id == 45103:
             self.end_date = int(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 51208:
-            self.dealer_contrib_msrp = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 51209:
-            self.manuf_contrib_msrp = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 51210:
-            self.gov_contrib_msrp = float(escbr_ent.data_value)
         elif escbr_ent.schema_id == 45204:
             self.public_notes = escbr_ent.data_value
         elif escbr_ent.schema_id == 45209:
@@ -293,7 +294,7 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
             raise NotImplementedError('schema_id {0} is not implemented'.format(str(escbr_ent.schema_id)))
 
     def from_msaccess_cs_rt_incentives(self, cs_rt_incentive_ent: msaccess_ents.CsRtIncentivesEntity):
-        self.vehicle_id = '{0}{1}'.format(int(cs_rt_incentive_ent.uid), cs_rt_incentive_ent.data_date)
+        self.vehicle_id = '{0}{1}'.format(cs_rt_incentive_ent.uid, cs_rt_incentive_ent.data_date)
         self.jato_value = cs_rt_incentive_ent.jato_val
         self.take_rate = cs_rt_incentive_ent.take_rate
         self.code = cs_rt_incentive_ent.inc_aaaaa
@@ -304,7 +305,7 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         self.end_date = cs_rt_incentive_ent.end  # %Y%m%d
         self.deposit_perc = cs_rt_incentive_ent.perc_dep
         self.max_term = cs_rt_incentive_ent.months_pay
-        self.interest = cs_rt_incentive_ent.int_rate
+        self.interest_perc = cs_rt_incentive_ent.int_rate
         self.public_notes = cs_rt_incentive_ent.public_notes
         self.internal_comms = cs_rt_incentive_ent.internal_comments
         self.opt_id = 0
@@ -329,7 +330,7 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
 class TpEntity(RtEntity):
     def __init__(self, cs_rt_tp_ent: msaccess_ents.CsRtTpCompletaEntity=None):
         super().__init__()
-        self.sample_date = 20000101  # %Y%m%d
+        self.sample_date = 0  # %Y%m%d
         self.transaction_price = 0.0
         if cs_rt_tp_ent:
             self.from_cs_rt_tp_completa_ent(ent=cs_rt_tp_ent)
