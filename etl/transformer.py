@@ -77,6 +77,13 @@ def transform(into: str, source: str, input_data: list):
                 ready_ents.append(ready_ent)
         return ready_ents
 
+    def write_ents_to_disc(ents: list, output_path: str):
+        doc = '\n'.join(str(ent) for ent in ents)
+        with open(output_path, 'w') as file:
+            file.truncate()
+            file.write(doc)
+        return output_path
+
     key = '{0}|{1}'.format(source, into)
     if input_data:
         input_data = from_memory(read_data=input_data, into_raw_type=RAW_TYPES_DICT[key])
@@ -87,11 +94,4 @@ def transform(into: str, source: str, input_data: list):
                     file_path='{0}{1}/{2}'.format(extractor.EXTRACTED_DIR_PATH, source, necessary_file),
                     into_raw_type=RAW_TYPES_DICT[key]))
     input_data = from_raw(raw_ent_list=input_data, into_ready_type=READY_TYPES_DICT[into])
-    _write_ents_to_disc(input_data, READY_FILES_PATH_DICT[key])
-
-
-def _write_ents_to_disc(ents: list, output_path: str):
-    doc = '\n'.join(str(ent) for ent in ents)
-    with open(output_path, 'w') as file:
-        file.truncate()
-        file.write(doc)
+    return write_ents_to_disc(input_data, READY_FILES_PATH_DICT[key])
