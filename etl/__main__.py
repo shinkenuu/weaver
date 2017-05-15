@@ -20,7 +20,7 @@ if __name__ == '__main__':
         arg_parser.add_argument('--chain', nargs='?', type=str, help='chain until [load]', default='',
                                 choices=['load'])
     elif sys.argv[1] == 'load':
-        arg_parser.add_argument('--source', nargs='?', type=str, help='source name: [ftp|mssql|msaccess]')
+        arg_parser.add_argument('--source', nargs=1, type=argparse.FileType('r'), help='source name: blk file path')
         arg_parser.add_argument('--target', nargs=1, type=str, help='[<database>.<table>]')
     parsed_args = arg_parser.parse_args(sys.argv[1:])
     main.etl(command=parsed_args.command[0], target=parsed_args.target[0],
