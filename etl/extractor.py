@@ -124,7 +124,9 @@ def extract(target: str, source: str):
                 raise ValueError('{} is not a valid rt.vehicles source'.format(source))
             return MultiSourceExtractor(single_extractor_list=extractors)
         elif target == 'rt.incentives':
-            if source == 'mssql':
+            if source == 'v5':
+                raise NotImplementedError('extraction of incentives from v5')
+            elif source == 'mssql':
                 return SqlDataExtractor(acc.access_dict['ukvsqlbdrep01'],
                                         db='rt',
                                         query='select * from vw_rt_incentives_from_escbr_cs2002_br_public_incentive'

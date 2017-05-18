@@ -1,6 +1,8 @@
 import abc
+from datetime import datetime
+import math
 import re
-from . import base, cs2002 as cs2002_ents, msaccess as msaccess_ents
+from . import base, cs2002 as cs2002_ents, v5 as v5_ents, msaccess as msaccess_ents
 
 version_state_dict = {
     '-': '',
@@ -253,54 +255,31 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         if raw_ent_list:
             self.assembly(raw_ent_list)
         elif raw_ent:
-                if isinstance(raw_ent, msaccess_ents.CsRtIncentivesEntity):
+                if isinstance(raw_ent, v5_ents.IncentiveEntity):
+                    self.from_v5_incentives(raw_ent)
+                elif isinstance(raw_ent, msaccess_ents.CsRtIncentivesEntity):
                     self.from_msaccess_cs_rt_incentives(raw_ent)
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.data_date), str(self.jato_value), str(self.take_rate),
                          str(self.code), str(self.dealer_contrib_msrp), str(self.gov_contrib_msrp),
-                         str(self.manuf_contrib_msrp), str(self.interest_perc), str(self.deposit_perc),
-                         str(self.max_term), str(self.start_date), str(self.end_date), str(self.public_notes),
-                         str(self.internal_comms), str(self.opt_id), str(self.rule_type), str(self.opt_rule)])
+                         str(self.manuf_contrib_msrp), str(self.interest_perc) if self.interest_perc else '',
+                         str(self.deposit_perc) if self.deposit_perc else '',
+                         str(self.max_term) if self.max_term else '', str(self.start_date), str(self.end_date),
+                         str(self.public_notes), str(self.internal_comms), str(self.opt_id), str(self.rule_type),
+                         str(self.opt_rule)])
 
-    def _decode_raw_ent(self, escbr_ent: cs2002_ents.EscbrBrPublicIncentiveEntity):
-        if escbr_ent.schema_id == 45112:
-            self.data_date = int(escbr_ent.data_value)
-        if escbr_ent.schema_id == 47002:
-            self.jato_value = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 47102:
-            self.take_rate = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 51208:
-            self.dealer_contrib_msrp = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 51210:
-            self.gov_contrib_msrp = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 51209:
-            self.manuf_contrib_msrp = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 47505:
-            self.interest_perc = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 47508:
-            self.deposit_perc = float(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 47504:
-            self.max_term = int(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 45102:
-            self.start_date = int(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 45103:
-            self.end_date = int(escbr_ent.data_value)
-        elif escbr_ent.schema_id == 45204:
-            self.public_notes = escbr_ent.data_value
-        elif escbr_ent.schema_id == 45209:
-            self.internal_comms = escbr_ent.data_value
-        else:
-            raise NotImplementedError('schema_id {0} is not implemented'.format(str(escbr_ent.schema_id)))
+    def _calc_interest_rate_per_month(self, yearly_interest: float):
+        return (math.pow(yearly_interest / 100 + 1, 1/12) - 1) * 100
 
     def from_msaccess_cs_rt_incentives(self, cs_rt_incentive_ent: msaccess_ents.CsRtIncentivesEntity):
         self.vehicle_id = '{0}{1}'.format(cs_rt_incentive_ent.uid, cs_rt_incentive_ent.data_date)
         self.jato_value = cs_rt_incentive_ent.jato_val
         self.take_rate = cs_rt_incentive_ent.take_rate
         self.code = cs_rt_incentive_ent.inc_aaaaa
-        self.manuf_contrib_msrp = cs_rt_incentive_ent.manuf_cont
         self.dealer_contrib_msrp = cs_rt_incentive_ent.dealer_cont
         self.gov_contrib_msrp = 0.0
+        self.manuf_contrib_msrp = cs_rt_incentive_ent.manuf_cont
         self.start_date = cs_rt_incentive_ent.start  # %Y%m%d
         self.end_date = cs_rt_incentive_ent.end  # %Y%m%d
         self.deposit_perc = cs_rt_incentive_ent.perc_dep
@@ -308,6 +287,56 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         self.interest_perc = cs_rt_incentive_ent.int_rate
         self.public_notes = cs_rt_incentive_ent.public_notes
         self.internal_comms = cs_rt_incentive_ent.internal_comments
+        self.opt_id = 0
+        self.rule_type = 0
+        self.opt_rule = ''
+
+    def from_v5_incentives(self, v5_inc_ent: v5_ents.IncentiveEntity):
+        def format_date(date_str: str):
+            date = datetime.strptime(date_str, '%d/%m/%Y')
+            return int(date.strftime('%Y%m%d'))
+
+        def find_incentive_code():
+            def slice_through_code(header: str):
+                return header[header.index('[')+1:header.index(']')]
+
+            if v5_inc_ent.contribution_header:
+                return slice_through_code(v5_inc_ent.contribution_header)
+            elif v5_inc_ent.take_rate_header:
+                return slice_through_code(v5_inc_ent.take_rate_header)
+            elif v5_inc_ent.finance_header:
+                return slice_through_code(v5_inc_ent.finance_header)
+            elif v5_inc_ent.incentive_comments_header:
+                return slice_through_code(v5_inc_ent.incentive_comments_header)
+            elif v5_inc_ent.incentive_header:
+                return slice_through_code(v5_inc_ent.incentive_header)
+            elif v5_inc_ent.incentive_value_header:
+                return slice_through_code(v5_inc_ent.incentive_value_header)
+            else:
+                raise IndexError('No incentive code found')
+
+        def slice_through_br_comment(comm: str):
+            try:
+                return comm[comm.index(':') + 1:]
+            except ValueError:  # If ':' hasnt found in comm
+                return ''
+
+        self.vehicle_id = '{}{}'.format(str(v5_inc_ent.uid), format_date(v5_inc_ent.data_date))
+        self.data_date = format_date(v5_inc_ent.inc_data_date)
+        self.jato_value = v5_inc_ent.jato_value
+        self.take_rate = v5_inc_ent.take_rate
+        self.code = find_incentive_code()
+        self.dealer_contrib_msrp = v5_inc_ent.dealer_contrib_price
+        self.gov_contrib_msrp = v5_inc_ent.government_contrib_price
+        self.manuf_contrib_msrp = v5_inc_ent.manufacturer_contrib_price
+        self.start_date = format_date(v5_inc_ent.inc_start_date)
+        self.end_date = format_date(v5_inc_ent.inc_end_date)
+        self.deposit_perc = v5_inc_ent.deposit_percent
+        self.max_term = v5_inc_ent.first_max_term
+        self.interest_perc = self._calc_interest_rate_per_month(float(v5_inc_ent.first_max_interest)) \
+            if v5_inc_ent.first_max_interest else None
+        self.public_notes = slice_through_br_comment(v5_inc_ent.public_notes)
+        self.internal_comms = slice_through_br_comment(v5_inc_ent.internal_comments)
         self.opt_id = 0
         self.rule_type = 0
         self.opt_rule = ''
@@ -320,11 +349,41 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         self.opt_rule = escbr_ent.option_rule
 
     def assembly(self, escbr_ent_list: [cs2002_ents.EscbrBrPublicIncentiveEntity]):
+        def decode_raw_ent(escbr_assemblable_ent: cs2002_ents.EscbrBrPublicIncentiveEntity):
+            if escbr_assemblable_ent.schema_id == 45112:
+                self.data_date = int(escbr_assemblable_ent.data_value)
+            if escbr_assemblable_ent.schema_id == 47002:
+                self.jato_value = float(escbr_assemblable_ent.data_value)
+            elif escbr_assemblable_ent.schema_id == 47102:
+                self.take_rate = self._calc_interest_rate_per_month(float(escbr_assemblable_ent.data_value))
+            elif escbr_assemblable_ent.schema_id == 51208:
+                self.dealer_contrib_msrp = float(escbr_assemblable_ent.data_value)
+            elif escbr_assemblable_ent.schema_id == 51210:
+                self.gov_contrib_msrp = float(escbr_assemblable_ent.data_value)
+            elif escbr_assemblable_ent.schema_id == 51209:
+                self.manuf_contrib_msrp = float(escbr_assemblable_ent.data_value)
+            elif escbr_assemblable_ent.schema_id == 47505:
+                self.interest_perc = float(escbr_assemblable_ent.data_value)
+            elif escbr_assemblable_ent.schema_id == 47508:
+                self.deposit_perc = float(escbr_assemblable_ent.data_value)
+            elif escbr_assemblable_ent.schema_id == 47504:
+                self.max_term = int(escbr_assemblable_ent.data_value)
+            elif escbr_assemblable_ent.schema_id == 45102:
+                self.start_date = int(escbr_assemblable_ent.data_value)
+            elif escbr_assemblable_ent.schema_id == 45103:
+                self.end_date = int(escbr_assemblable_ent.data_value)
+            elif escbr_assemblable_ent.schema_id == 45204:
+                self.public_notes = escbr_assemblable_ent.data_value
+            elif escbr_assemblable_ent.schema_id == 45209:
+                self.internal_comms = escbr_assemblable_ent.data_value
+            else:
+                raise NotImplementedError('schema_id {0} is not implemented'.format(str(escbr_ent.schema_id)))
+
         if len(escbr_ent_list) < 1:
             raise IndexError("IncentiveEntity's escbr_ent_list cannot be empty")
         self.scavenge_common_data(escbr_ent=escbr_ent_list[0])
         for escbr_ent in escbr_ent_list:
-            self._decode_raw_ent(escbr_ent=escbr_ent)
+            decode_raw_ent(escbr_assemblable_ent=escbr_ent)
 
 
 class TpEntity(RtEntity):

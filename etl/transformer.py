@@ -1,12 +1,14 @@
-
+import csv
 from etl import extractor
-from etl.entities import base as base_ents, cs2002 as cs2002_ents, msaccess as msaccess_ents, rt as rt_ents
+from etl.entities import base as base_ents, cs2002 as cs2002_ents, v5 as v5_ents, msaccess as msaccess_ents, \
+    rt as rt_ents
 
 READY_FILES_ROOT_DIR_PATH = '/mnt/jatobrfiles/Weaver/etl/ready/'
 
 READY_FILES_PATH_DICT = {
     'mssql|rt.vehicles': '{}rt/vehicles_from_mssql.txt'.format(READY_FILES_ROOT_DIR_PATH),
     'mssql|rt.incentives': '{}rt/incentives_from_mssql.txt'.format(READY_FILES_ROOT_DIR_PATH),
+    'v5|rt.incentives': '{}rt/incentives_from_v5.txt'.format(READY_FILES_ROOT_DIR_PATH),
     'msaccess|rt.incentives': '{}rt/incentives_from_msaccess.txt'.format(READY_FILES_ROOT_DIR_PATH),
     'msaccess|rt.tp': '{}rt/tp_from_msaccess.txt'.format(READY_FILES_ROOT_DIR_PATH),
 }
@@ -20,6 +22,7 @@ READY_TYPES_DICT = {
 RAW_TYPES_DICT = {
     'mssql|rt.vehicles': cs2002_ents.Cs2002Entity,
     'mssql|rt.incentives': cs2002_ents.EscbrBrPublicIncentiveEntity,
+    'v5|rt.incentives': v5_ents.IncentiveEntity,
     'msaccess|rt.incentives': msaccess_ents.CsRtIncentivesEntity,
     'msaccess|rt.tp': msaccess_ents.CsRtTpCompletaEntity
 }
@@ -27,6 +30,7 @@ RAW_TYPES_DICT = {
 EXTRACTED_FILES_DICT = {
     'mssql|rt.vehicles': ('sscbr_cs2002.txt', 'nscbr_cs2002.txt'),
     'mssql|rt.incentives': ('escbr_cs2002_br_public_incentive.txt', ),
+    'v5|rt.incentives': ('escbr.csv', 'fscbr.csv'),
     'msaccess|rt.incentives': ('CS_RT_INCENTIVES.txt', ),
     'msaccess|rt.tp': ('CS_RT_TP_COMPLETA.txt', )
 }
@@ -41,19 +45,25 @@ def transform(into: str, source: str, input_data: list):
     :return: 
     """
     def from_file(file_path: str, into_raw_type: type):
-        ents = []
-        with open(file_path, 'r') as file:
-            for line in file:
-                raw_ent = into_raw_type(raw_data=line)
-                ents.append(raw_ent)
-        return ents
+        def from_txt():
+            with open(file_path, 'r') as file:
+                return [into_raw_type(raw_data=line) for line in file]
+
+        def from_csv():
+            with open(file_path, mode='r', newline='', encoding='Latin1') as file:
+                reader = csv.reader(file, dialect='excel') if source == 'v5' else csv.reader(file)
+                return from_memory(read_data=reader, into_raw_type=into_raw_type)
+
+        file_extension = file_path[-3:]
+        if file_extension == 'txt':
+            return from_txt()
+        elif file_extension == 'csv':
+            return from_csv()
+        else:
+            raise NotImplementedError('{} extension'.format(file_extension))
 
     def from_memory(read_data: list, into_raw_type: type):
-        ents = []
-        for data in read_data:
-            raw_ent = into_raw_type(raw_data=data)
-            ents.append(raw_ent)
-        return ents
+        return [into_raw_type(raw_data=data) for data in read_data]
 
     def from_raw(raw_ent_list: [base_ents.RawEntity], into_ready_type: type):
         if not raw_ent_list:
@@ -72,9 +82,7 @@ def transform(into: str, source: str, input_data: list):
                     ents_to_assemble.clear()
                     ents_to_assemble.append(assemblable_ent)
         else:
-            for raw_ent in raw_ent_list:
-                ready_ent = into_ready_type(raw_ent=raw_ent)
-                ready_ents.append(ready_ent)
+            ready_ents = [into_ready_type(raw_ent=raw_ent) for raw_ent in raw_ent_list]
         return ready_ents
 
     def write_ents_to_disc(ents: list, output_path: str):

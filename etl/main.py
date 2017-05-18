@@ -10,7 +10,7 @@ def etl(command: str, source: str, target: str, chain_until: str):
     """
     Receives command and delegates it to the right etl module
     :param command: extract | transform | load
-    :param source: the data source [ftp|mssql|msaccess]
+    :param source: the data source [ftp|mssql|msaccess|v5]
     :param target: the immediate destination of the referred data [server.database|database.table]
     :param chain_until: pipe results since command until ...
     :return: 
