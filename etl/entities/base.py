@@ -36,8 +36,10 @@ class RawEntity(object, metaclass=abc.ABCMeta):
             self.from_line(raw_data)
         elif isinstance(raw_data, tuple) or isinstance(raw_data, list):
             self.from_iterable(raw_data)
+        elif isinstance(raw_data, dict):
+            self.from_dict(raw_data)
         else:
-            raise TypeError('raw_data must be str or __iter__')
+            raise TypeError('raw_data must be str or __iter__ or dict')
 
     @abc.abstractmethod
     def from_line(self, line: str):
@@ -51,6 +53,14 @@ class RawEntity(object, metaclass=abc.ABCMeta):
     def from_iterable(self, iterable):
         """
             Populates this Entity with raw data from a iterable
+        :return:
+        """
+        pass
+
+    @abc.abstractmethod
+    def from_dict(self, dictionary: dict):
+        """
+            Populates this Entity with raw data from a dictionary
         :return:
         """
         pass

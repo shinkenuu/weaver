@@ -16,7 +16,7 @@ class V5Entity(base.RawEntity):
         :param line: the line of text to set from
         :return: 
         """
-        pass
+        raise NotImplementedError()
 
     def from_iterable(self, iterable):
         """
@@ -24,7 +24,15 @@ class V5Entity(base.RawEntity):
         :param iterable:
         :return: 
         """
-        pass
+        raise NotImplementedError()
+
+    def from_dict(self, dictionary: dict):
+        """
+        Set this entity from a dictionary
+        :param dictionary:
+        :return: 
+        """
+        raise NotImplementedError()
 
 
 class IncentiveEntity(V5Entity):
@@ -41,9 +49,10 @@ class IncentiveEntity(V5Entity):
         self.government_contrib_price = 0.0
         self.manufacturer_contrib_price = 0.0
         self.finance_header = ''
-        self.first_max_interest = 0.0
-        self.deposit_percent = 0.0
-        self.first_max_term = 0
+        self.first_max_interest = None
+        self.deposit_percent = None
+        self.first_max_term = None
+        self.final_balance = None
         self.incentive_header = ''
         self.inc_data_date = 0  # %d/%m/%Y
         self.inc_start_date = 0  # %d/%m/%Y
@@ -78,3 +87,32 @@ class IncentiveEntity(V5Entity):
         self.incentive_comments_header = iterable[18]
         self.internal_comments = iterable[19]
         self.public_notes = iterable[20]
+
+    # TODO wait for reply on why there is percentage data in the value field
+    def from_dict(self, dictionary: dict):
+        try:
+            self.uid = int(dictionary['UID'])
+            self.data_date = dictionary['Data dos dados']  # %d/%m/%Y
+            self.incentive_value_header = dictionary['Valor incentivo']
+            self.jato_value = float(dictionary['valor JATO'])
+            self.take_rate_header = dictionary['Taxa Penetração']
+            self.take_rate = float(dictionary['Tx penetração-%'])
+            self.contribution_header = dictionary['Contribuição']
+            self.dealer_contrib_price = float(dictionary['contr.con.-prç'])
+            self.government_contrib_price = float(dictionary['contr.gov.-prç'])
+            self.manufacturer_contrib_price = float(dictionary['contr.fab.-prç'])
+            self.finance_header = dictionary['Financiamento']
+            self.first_max_interest = None if not dictionary['1º per tx juros'] \
+                else float(dictionary['1º per tx juros'])
+            self.deposit_percent = None if not dictionary['ent (%pç)'] else float(dictionary['ent (%pç)'])
+            self.first_max_term = None if not dictionary['1ºper max meses'] else int(dictionary['1ºper max meses'])
+            self.final_balance = None if not dictionary['bal.final (%pç)'] else float(dictionary['bal.final (%pç)'])
+            self.incentive_header = dictionary['Incentivo']
+            self.inc_data_date = dictionary['data envio']  # %d/%m/%Y
+            self.inc_start_date = dictionary['data início']  # %d/%m/%Y
+            self.inc_end_date = dictionary['data fim']  # %d/%m/%Y
+            self.incentive_comments_header = dictionary['Comen.incentivo']
+            self.internal_comments = dictionary['com.int. - nota']
+            self.public_notes = dictionary['notas públicas']
+        except Exception  as ex:
+            raise ex

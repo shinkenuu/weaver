@@ -51,7 +51,10 @@ def transform(into: str, source: str, input_data: list):
 
         def from_csv():
             with open(file_path, mode='r', newline='', encoding='Latin1') as file:
-                reader = csv.reader(file, dialect='excel') if source == 'v5' else csv.reader(file)
+                if source == 'v5':
+                    reader = csv.DictReader(file, dialect='excel')
+                else:
+                    reader = csv.reader(file)
                 return from_memory(read_data=reader, into_raw_type=into_raw_type)
 
         file_extension = file_path[-3:]

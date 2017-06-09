@@ -134,6 +134,10 @@ def compose(current: str, new: str):
         return current + ',' + new
 
 
+def calc_interest_rate_per_month(yearly_interest: float):
+    return (math.pow(yearly_interest / 100 + 1, 1/12) - 1) * 100
+
+
 class RtEntity(object, metaclass=abc.ABCMeta):
     """
         Base RT entity that RT entity child must inherit of
@@ -242,9 +246,10 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         self.dealer_contrib_msrp = 0.0
         self.manuf_contrib_msrp = 0.0
         self.gov_contrib_msrp = 0.0
+        self.interest_perc = 0.0
         self.deposit_perc = 0.0
         self.max_term = 0
-        self.interest_perc = 0.0
+        self.final_balance_perc = 0.0
         self.start_date = 0  # %Y%m%d
         self.end_date = 0  # %Y%m%d
         self.public_notes = ''
@@ -268,9 +273,6 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
                          str(self.max_term) if self.max_term else '', str(self.start_date), str(self.end_date),
                          str(self.public_notes), str(self.internal_comms), str(self.opt_id), str(self.rule_type),
                          str(self.opt_rule)])
-
-    def _calc_interest_rate_per_month(self, yearly_interest: float):
-        return (math.pow(yearly_interest / 100 + 1, 1/12) - 1) * 100
 
     def from_msaccess_cs_rt_incentives(self, cs_rt_incentive_ent: msaccess_ents.CsRtIncentivesEntity):
         self.vehicle_id = '{0}{1}'.format(cs_rt_incentive_ent.uid, cs_rt_incentive_ent.data_date)
@@ -333,7 +335,7 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         self.end_date = format_date(v5_inc_ent.inc_end_date)
         self.deposit_perc = v5_inc_ent.deposit_percent
         self.max_term = v5_inc_ent.first_max_term
-        self.interest_perc = self._calc_interest_rate_per_month(float(v5_inc_ent.first_max_interest)) \
+        self.interest_perc = calc_interest_rate_per_month(float(v5_inc_ent.first_max_interest)) \
             if v5_inc_ent.first_max_interest else None
         self.public_notes = slice_through_br_comment(v5_inc_ent.public_notes)
         self.internal_comms = slice_through_br_comment(v5_inc_ent.internal_comments)
@@ -355,7 +357,7 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
             if escbr_assemblable_ent.schema_id == 47002:
                 self.jato_value = float(escbr_assemblable_ent.data_value)
             elif escbr_assemblable_ent.schema_id == 47102:
-                self.take_rate = self._calc_interest_rate_per_month(float(escbr_assemblable_ent.data_value))
+                self.take_rate = calc_interest_rate_per_month(float(escbr_assemblable_ent.data_value))
             elif escbr_assemblable_ent.schema_id == 51208:
                 self.dealer_contrib_msrp = float(escbr_assemblable_ent.data_value)
             elif escbr_assemblable_ent.schema_id == 51210:

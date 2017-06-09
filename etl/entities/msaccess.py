@@ -1,5 +1,6 @@
 import csv
 import io
+import abc
 from . import base
 
 
@@ -41,6 +42,19 @@ class MsAccessEntity(base.RawEntity):
                 self.from_iterable(iterable=row)
 
     def from_iterable(self, iterable):
+        """
+        Not Implemented
+        :param iterable:
+        :return: 
+        """
+        raise NotImplementedError()
+
+    def from_dict(self, dictionary: dict):
+        """
+        Not Implemented
+        :param dictionary:
+        :return: 
+        """
         raise NotImplementedError()
 
 
@@ -121,6 +135,9 @@ class CsRtIncentivesEntity(MsAccessEntity):
             self.start, self.end, self.perc_dep, self.months_pay, self.int_rate, self.public_notes, \
             self.internal_comments = iterable
 
+    def from_dict(self, dictionary: dict):
+        super().from_dict(dictionary=dictionary)
+
 
 class CsRtTpCompletaEntity(MsAccessEntity):
     """
@@ -176,3 +193,6 @@ class CsRtTpCompletaEntity(MsAccessEntity):
         :return: 
         """
         self.uid, self.data_date, self.sample_date, self.transaction_price = iterable
+
+    def from_dict(self, dictionary: dict):
+        super().from_dict(dictionary=dictionary)

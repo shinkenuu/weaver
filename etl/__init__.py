@@ -1,4 +1,4 @@
-#!/usr/env python
+#!/usr/env python3
 
 import os
 from . import extractor, loader, transformer

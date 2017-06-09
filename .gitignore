@@ -1,5 +1,5 @@
-env/*
-access.py
-.idea/*
-__pycache__/*
-etl/__pycache/*
+env/
+.idea/
+__pycache__/
+etl/__pycache__/
+reporttool/__pycache__/
