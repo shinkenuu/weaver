@@ -3,8 +3,7 @@
 import argparse
 import sys
 import warder
-from . import extractor, loader, transformer
-
+from etl import extractor, loader, transformer
 
 _warder = warder.Warder()
 

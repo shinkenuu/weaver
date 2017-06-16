@@ -77,9 +77,9 @@ class IncentiveEntity(V5Entity):
         self.government_contrib_price = float(iterable[8])
         self.manufacturer_contrib_price = float(iterable[9])
         self.finance_header = iterable[10]
-        self.first_max_interest = float(iterable[11]) if iterable[11] else None
-        self.deposit_percent = float(iterable[12]) if iterable[12] else None
-        self.first_max_term = int(iterable[13]) if iterable[12] else None
+        self.first_max_interest = float(iterable[11])
+        self.deposit_percent = float(iterable[12])
+        self.first_max_term = int(iterable[13])
         self.incentive_header = iterable[14]
         self.inc_data_date = iterable[15]  # %d/%m/%Y
         self.inc_start_date = iterable[16]  # %d/%m/%Y
@@ -88,31 +88,28 @@ class IncentiveEntity(V5Entity):
         self.internal_comments = iterable[19]
         self.public_notes = iterable[20]
 
-    # TODO wait for reply on why there is percentage data in the value field
     def from_dict(self, dictionary: dict):
-        try:
-            self.uid = int(dictionary['UID'])
-            self.data_date = dictionary['Data dos dados']  # %d/%m/%Y
-            self.incentive_value_header = dictionary['Valor incentivo']
-            self.jato_value = float(dictionary['valor JATO'])
-            self.take_rate_header = dictionary['Taxa Penetração']
-            self.take_rate = float(dictionary['Tx penetração-%'])
-            self.contribution_header = dictionary['Contribuição']
-            self.dealer_contrib_price = float(dictionary['contr.con.-prç'])
-            self.government_contrib_price = float(dictionary['contr.gov.-prç'])
-            self.manufacturer_contrib_price = float(dictionary['contr.fab.-prç'])
-            self.finance_header = dictionary['Financiamento']
-            self.first_max_interest = None if not dictionary['1º per tx juros'] \
-                else float(dictionary['1º per tx juros'])
-            self.deposit_percent = None if not dictionary['ent (%pç)'] else float(dictionary['ent (%pç)'])
-            self.first_max_term = None if not dictionary['1ºper max meses'] else int(dictionary['1ºper max meses'])
-            self.final_balance = None if not dictionary['bal.final (%pç)'] else float(dictionary['bal.final (%pç)'])
-            self.incentive_header = dictionary['Incentivo']
-            self.inc_data_date = dictionary['data envio']  # %d/%m/%Y
-            self.inc_start_date = dictionary['data início']  # %d/%m/%Y
-            self.inc_end_date = dictionary['data fim']  # %d/%m/%Y
-            self.incentive_comments_header = dictionary['Comen.incentivo']
-            self.internal_comments = dictionary['com.int. - nota']
-            self.public_notes = dictionary['notas públicas']
-        except Exception  as ex:
-            raise ex
+        self.uid = int(dictionary['UID'])
+        self.data_date = dictionary['Data dos dados']  # %d/%m/%Y
+        self.incentive_value_header = dictionary['Valor incentivo']
+        self.jato_value = None if not dictionary['valor JATO'] else float(dictionary['valor JATO'])
+        self.take_rate_header = dictionary['Taxa Penetração']
+        self.take_rate = None if not dictionary['Tx penetração-%'] else float(dictionary['Tx penetração-%'])
+        self.contribution_header = dictionary['Contribuição']
+        self.dealer_contrib_price = None if not dictionary['contr.con.-prç'] else float(dictionary['contr.con.-prç'])
+        self.government_contrib_price = None if not dictionary['contr.gov.-prç'] \
+            else float(dictionary['contr.gov.-prç'])
+        self.manufacturer_contrib_price = None if not dictionary['contr.fab.-prç'] \
+            else float(dictionary['contr.fab.-prç'])
+        self.finance_header = dictionary['Financiamento']
+        self.first_max_interest = None if not dictionary['1º per tx juros'] else float(dictionary['1º per tx juros'])
+        self.deposit_percent = None if not dictionary['ent (%pç)'] else float(dictionary['ent (%pç)'])
+        self.first_max_term = None if not dictionary['1ºper max meses'] else int(dictionary['1ºper max meses'])
+        self.final_balance = None if not dictionary['bal.final (%pç)'] else float(dictionary['bal.final (%pç)'])
+        self.incentive_header = dictionary['Incentivo']
+        self.inc_data_date = dictionary['data envio']  # %d/%m/%Y
+        self.inc_start_date = dictionary['data início']  # %d/%m/%Y
+        self.inc_end_date = dictionary['data fim']  # %d/%m/%Y
+        self.incentive_comments_header = dictionary['Comen.incentivo']
+        self.internal_comments = dictionary['com.int. - nota']
+        self.public_notes = dictionary['notas públicas']

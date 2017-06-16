@@ -134,7 +134,7 @@ def compose(current: str, new: str):
         return current + ',' + new
 
 
-def calc_interest_rate_per_month(yearly_interest: float):
+def calc_interest_rate_per_month(yearly_interest: float) -> float:
     return (math.pow(yearly_interest / 100 + 1, 1/12) - 1) * 100
 
 
@@ -266,13 +266,18 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
                     self.from_msaccess_cs_rt_incentives(raw_ent)
 
     def __str__(self):
-        return '|'.join([str(self.vehicle_id), str(self.data_date), str(self.jato_value), str(self.take_rate),
-                         str(self.code), str(self.dealer_contrib_msrp), str(self.gov_contrib_msrp),
-                         str(self.manuf_contrib_msrp), str(self.interest_perc) if self.interest_perc else '',
-                         str(self.deposit_perc) if self.deposit_perc else '',
-                         str(self.max_term) if self.max_term else '', str(self.start_date), str(self.end_date),
-                         str(self.public_notes), str(self.internal_comms), str(self.opt_id), str(self.rule_type),
-                         str(self.opt_rule)])
+        return '|'.join([str(self.vehicle_id), str(self.data_date),
+                         str(self.jato_value) if self.jato_value is not None else '',
+                         str(self.take_rate) if self.take_rate is not None else '',
+                         str(self.code), str(self.dealer_contrib_msrp) if self.dealer_contrib_msrp is not None else '',
+                         str(self.gov_contrib_msrp) if self.gov_contrib_msrp is not None else '',
+                         str(self.manuf_contrib_msrp) if self.manuf_contrib_msrp is not None else '',
+                         str(self.interest_perc) if self.interest_perc is not None else '',
+                         str(self.deposit_perc) if self.deposit_perc is not None else '',
+                         str(self.max_term) if self.max_term is not None else '',
+                         str(self.final_balance_perc) if self.final_balance_perc is not None else '',
+                         str(self.start_date), str(self.end_date), str(self.public_notes), str(self.internal_comms),
+                         str(self.opt_id), str(self.rule_type), str(self.opt_rule)])
 
     def from_msaccess_cs_rt_incentives(self, cs_rt_incentive_ent: msaccess_ents.CsRtIncentivesEntity):
         self.vehicle_id = '{0}{1}'.format(cs_rt_incentive_ent.uid, cs_rt_incentive_ent.data_date)
@@ -320,7 +325,7 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         def slice_through_br_comment(comm: str):
             try:
                 return comm[comm.index(':') + 1:]
-            except ValueError:  # If ':' hasnt found in comm
+            except ValueError:  # If ':' wasn't found in comm
                 return ''
 
         self.vehicle_id = '{}{}'.format(str(v5_inc_ent.uid), format_date(v5_inc_ent.data_date))
@@ -335,8 +340,8 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
         self.end_date = format_date(v5_inc_ent.inc_end_date)
         self.deposit_perc = v5_inc_ent.deposit_percent
         self.max_term = v5_inc_ent.first_max_term
-        self.interest_perc = calc_interest_rate_per_month(float(v5_inc_ent.first_max_interest)) \
-            if v5_inc_ent.first_max_interest else None
+        self.interest_perc = calc_interest_rate_per_month(v5_inc_ent.first_max_interest) \
+            if isinstance(v5_inc_ent.first_max_interest, float) else None
         self.public_notes = slice_through_br_comment(v5_inc_ent.public_notes)
         self.internal_comms = slice_through_br_comment(v5_inc_ent.internal_comments)
         self.opt_id = 0

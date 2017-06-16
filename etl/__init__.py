@@ -1,7 +1,7 @@
 #!/usr/env python3
 
 import os
-from . import extractor, loader, transformer
+from etl import extractor, loader, transformer
 
 
 def init_env(dir_path: str):
