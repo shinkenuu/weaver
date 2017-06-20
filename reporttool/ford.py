@@ -1,5 +1,5 @@
-from openpyxl import utils
-from openpyxl import formatting
+from openpyxl import utils, formatting
+from openpyxl.chart import (LineChart, Reference, Series)
 from openpyxl.comments import Comment
 from . import _base
 
@@ -9,7 +9,8 @@ class EquipmentAndIncentives(_base.EvolutionReport):
         class Incentive:
             def __init__(self, inc_data: tuple):
                 self.code, self.jato_value, self.take_rate, self.manuf_contrib, self.interest_perc, \
-                self.deposit_perc, self.max_term, self.internal_comments, self.public_notes = inc_data
+                self.deposit_perc, self.max_term, self.final_balance_perc, self.internal_comments, \
+                self.public_notes = inc_data
 
         def __init__(self, veh_data: tuple, incentives: list):
             self.make, self.model, self.version, self.prod_yr, self.model_yr, self.msrp, self.sample_date,\
@@ -39,7 +40,10 @@ class EquipmentAndIncentives(_base.EvolutionReport):
             if len(finances) == 0:
                 return '-', None
             if len(finances) == 1:
-                return finances[0].jato_value / finances[0].take_rate, None
+                if finances[0].jato_value is not None and finances[0].take_rate is not None: # TODO remove this condit
+                    return finances[0].jato_value / finances[0].take_rate, None
+                else:
+                    return '-', None
             else:
                 finances.sort(key=lambda f: f.jato_value / f.take_rate)
                 return (finances[0].jato_value / finances[0].take_rate,
@@ -69,9 +73,9 @@ class EquipmentAndIncentives(_base.EvolutionReport):
 
         def create_net_price_icon_set():
             return formatting.rule.IconSet('3Arrows',
-                                           cfvo=[formatting.rule.FormatObject(type='num', val=-1),
-                                                 formatting.rule.FormatObject(type='num', val=0),
-                                                 formatting.rule.FormatObject(type='num', val=1)],
+                                           cfvo=[formatting.rule.FormatObject(type='num', val=0),
+                                                 formatting.rule.FormatObject(type='num', val=0, gte=True),
+                                                 formatting.rule.FormatObject(type='num', val=0, gte=False)],
                                            showValue=True)
 
         super().__init__()
@@ -104,15 +108,16 @@ class EquipmentAndIncentives(_base.EvolutionReport):
                                                  make_summary_formula_ranges=[(1, 0), ],
                                                  model_summary_formula='=IF(ISERROR(AVERAGE({0})),"-",AVERAGE({0}))',
                                                  model_summary_formula_ranges=[(1, 0)]))
-        self.sample_headers.append(create_header(name='Net Price', number_format='#,###', offset=4,
-                                                 make_summary_formula='=IF(ISERROR(AVERAGEIF({x},"m",{0})-{1}),'
-                                                                      'IF(ISERROR(AVERAGEIF({x},"m",{0})),"-",'
-                                                                      'AVERAGEIF({x},"m",{0})),'
-                                                                      'AVERAGEIF({x},"m",{0})-{1})',
-                                                 make_summary_formula_ranges=[(1, 0), (1, -6)],
+        self.sample_headers.append(create_header(name='Net Price', number_format='#.00%', offset=4,
+                                                 make_summary_formula='=IF(ISERROR(AVERAGEIF({x},"m",{0})),"-",'
+                                                                      'AVERAGEIF({x},"m",{0}))',
+                                                 make_summary_formula_ranges=[(1, 0)],
+                                                 make_summary_format_rule=formatting.Rule(type='iconSet',
+                                                                                          iconSet=
+                                                                                          create_net_price_icon_set()),
                                                  model_summary_formula='=IF(ISERROR(AVERAGE({0})),"-",AVERAGE({0}))',
                                                  model_summary_formula_ranges=[(1, 0)],
-                                                 make_summary_format_rule=formatting.Rule(type='iconSet',
+                                                 model_summary_format_rule=formatting.Rule(type='iconSet',
                                                                                           iconSet=
                                                                                           create_net_price_icon_set())))
         self.sample_headers.append(create_header(name='Volume', number_format='#,###', offset=5,
@@ -156,8 +161,9 @@ class EquipmentAndIncentives(_base.EvolutionReport):
                 self.fill_empty_vehicle_cells(version_row=row_index)
             temp_ent.model = new_model_name
             temp_ent.version = None
-            amount_of_rows_for_model = len(set([(veh.version, veh.prod_yr, veh.model_yr) for veh in self.entities
-                                            if veh.make == entity.make and veh.model == entity.model]))
+            amount_of_rows_for_model = len(
+                set([(veh.version, veh.prod_yr, veh.model_yr)
+                     for veh in self.entities if veh.make == entity.make and veh.model == entity.model]))
             self.write_model_header(model_name=new_model_name,
                                     amount_of_distinct_vehicles_of_model=amount_of_rows_for_model,
                                     model_header_row=row_index + 1)
@@ -196,12 +202,26 @@ class EquipmentAndIncentives(_base.EvolutionReport):
                 self.ws['{}{}'.format(utils.get_column_letter(_base.xl(column_index + 3)),
                                       str(_base.xl(version_row)))].comment = Comment(text=finance_incentive[1],
                                                                                      author='ReportTool')
-            self.matrix[version_row][column_index + 4] = '={}-SUM({}:{})'.format(
-                '{}{}'.format(utils.get_column_letter(_base.xl(column_index)), str(_base.xl(version_row))),
-                '{}{}'.format(utils.get_column_letter(_base.xl(column_index + 1)), str(_base.xl(version_row))),
-                '{}{}'.format(utils.get_column_letter(_base.xl(column_index + 3)), str(_base.xl(version_row))))
+            if vehicle_ent.sample_date > self.sample_dates[0]:
+                self.matrix[version_row][column_index + 4] = \
+                    '=IF(AND(ISNUMBER({1}{0}),ISNUMBER({4}{0})),' \
+                    '({1}{0}-SUM({2}{0}:{3}{0}))/({4}{0}-SUM({5}{0}:{6}{0}))-1,"-")'.format(
+                        str(_base.xl(version_row)),
+                        utils.get_column_letter(_base.xl(column_index)),
+                        utils.get_column_letter(_base.xl(column_index + 1)),
+                        utils.get_column_letter(_base.xl(column_index + 3)),
+                        utils.get_column_letter(_base.xl(column_index - 6)),
+                        utils.get_column_letter(_base.xl(column_index - 5)),
+                        utils.get_column_letter(_base.xl(column_index - 3)))
+            else:
+                self.matrix[version_row][column_index + 4] = '-'
+
+            self.ws.conditional_formatting.add('{}{}'.format(
+                utils.get_column_letter(_base.xl(column_index + 4)),
+                _base.xl(version_row)), self.sample_headers[4].model_summary.formatting_rule)
             self.matrix[version_row][column_index + 5] = vehicle_ent.volume
 
+        self.ws.title = 'Comparative'
         temp_ent = self.Entity(veh_data=tuple([None for _ in range(0, 9)]), incentives=[])
         row_index = self.POSITION['first_sample_row'] - 1
         self.matrix = [['' for _ in range(self.vehicle_desc_mark_up_col + 1)] for _ in range(size_matrix_rows())]
@@ -223,4 +243,70 @@ class EquipmentAndIncentives(_base.EvolutionReport):
         self.fill_empty_vehicle_cells(version_row=row_index)
         self.write_matrix_to_xl()
         self.finish_worksheet(last_row_index=row_index)
+        self.create_summary_chart(last_row=row_index)
         self.write_to_disc()
+
+    def create_summary_chart(self, last_row: int):
+        def create_data_table():
+            from datetime import datetime
+
+            def extract_summary_data(summary_row: int, header_name: str):
+                try:
+                    net_price_header = [header for header in self.sample_headers
+                                        if header.header_name == header_name][0]
+                except IndexError:
+                    raise IndexError('Could not find {} header'.format(header_name))
+
+                max_header_offset = max(self.sample_headers, key=lambda h: h.offset).offset
+
+                summary_list = [self.matrix[summary_row][self.POSITION['vehicle_col']], ]
+                for date_index, _ in enumerate(self.sample_dates):
+                    summary_list.append('=Comparative!{}{}'.format(
+                        utils.get_column_letter(
+                            _base.xl(self.POSITION['first_sample_col']
+                                     + net_price_header.offset
+                                     + date_index * (max_header_offset + 1))),
+                        _base.xl(summary_row)))
+
+                return summary_list
+
+            mark_up_col_letter = utils.get_column_letter(_base.xl(self.vehicle_desc_mark_up_col))
+            make_summary_list = [[]]
+
+            make_summary_list[0].append('Date')
+            for date in self.sample_dates:
+                make_summary_list[0].append(datetime.strptime(str(date), '%Y%m%d').strftime('%Y-%m'))
+
+            for row in range(self.POSITION['first_sample_row'], last_row + 1):
+                if self.ws['{}{}'.format(mark_up_col_letter, _base.xl(row))].value not in ('m', 'v'):
+                    make_summary_list.append(extract_summary_data(summary_row=row, header_name='Net Price'))
+
+            # Transpose
+            make_summary_list = list(map(list, zip(*make_summary_list)))
+
+            for make_summary in make_summary_list:
+                chart_sheet.append(make_summary)
+
+        chart_sheet = self.wb.create_sheet(title='Chart')
+        create_data_table()
+
+        chart = LineChart()
+        chart.title = 'Make Summary'
+        chart.style = 11
+        chart.y_axis.title = 'Net Price'
+        chart.y_axis.number_format = '#.00%'
+        chart.x_axis.title = 'Date'
+        chart.x_axis.number_format = 'yyyy-mm'
+
+        #for index, make in enumerate(set(veh.make for veh in self.entities)):
+        #    data = Reference(chart_sheet, min_row=1, min_col=index+1, max_row=len(self.sample_dates)+1, max_col=index+1)
+        #    series = Series(data, title=make)
+        #    chart.append(series)
+
+        data = Reference(chart_sheet, min_col=2, min_row=1,
+                         max_col=len(set(veh.make for veh in self.entities))+1, max_row=len(self.sample_dates)+1)
+        chart.add_data(data, titles_from_data=True)
+        dates = Reference(chart_sheet, min_col=1, min_row=2, max_row=len(self.sample_dates)+1)
+        chart.set_categories(dates)
+
+        chart_sheet.add_chart(chart, 'A{}'.format(_base.xl(2 + len(self.sample_dates))))

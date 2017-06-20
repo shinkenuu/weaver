@@ -157,6 +157,10 @@ class EvolutionReport(Report, abc.ABC):
                     cur_col=absolute_column_of_header,
                     cur_row=model_header_row,
                     rows_amount=amount_of_distinct_vehicles_of_model)
+                if header.model_summary.formatting_rule:
+                    self.ws.conditional_formatting.add('{}{}'.format(
+                        utils.get_column_letter(xl(absolute_column_of_header)),
+                        xl(model_header_row)), header.model_summary.formatting_rule)
 
     def finish_worksheet(self, last_row_index: int):
         def style_range(cell_range, border=styles.Border(), fill=None, font=None, alignment=None):

@@ -10,13 +10,13 @@ from reporttool import ford
 _warder = warder.Warder()
 
 REPORT_TYPES_DICT = {
-    'ford_inc_equip': ford.EquipmentAndIncentives,
+    'ford_equip_inc': ford.EquipmentAndIncentives,
 }
 
 REPORT_VIEWS_DICT = {
-    'ford_inc_equip': 'select vehicle_id, make, model, version, production_year, model_year, msrp, sample_date, volume,'
+    'ford_equip_inc': 'select vehicle_id, make, model, version, production_year, model_year, msrp, sample_date, volume,'
                       'value, code, jato_value, take_rate, manuf_contrib_msrp, interest_perc, deposit_perc, max_term, '
-                      'internal_comments, public_notes '
+                      'final_balance_perc, internal_comments, public_notes '
                       'from vw_ford_incentive_equipment '
                       'where sample_date between {0} and {1} '
                       'order by make, model, version, production_year, model_year, sample_date, code',
