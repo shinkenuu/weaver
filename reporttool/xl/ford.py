@@ -1,10 +1,10 @@
 from openpyxl import utils, formatting
 from openpyxl.chart import (LineChart, Reference, Series)
 from openpyxl.comments import Comment
-from . import _base
+from . import base
 
 
-class EquipmentAndIncentives(_base.EvolutionReport):
+class EquipmentAndIncentives(base.EvolutionReport):
     class Entity:
         class Incentive:
             def __init__(self, inc_data: tuple):
@@ -126,8 +126,8 @@ class EquipmentAndIncentives(_base.EvolutionReport):
                                                  make_summary_formula_ranges=[(1, 0), ],
                                                  model_summary_formula='=IF(ISERROR(SUM({0})),"-",SUM({0}))',
                                                  model_summary_formula_ranges=[(1, 0)]))
-        self.vehicle_desc_mark_up_col = self.POSITION['first_sample_col'] \
-                + len(self.sample_dates) * len(self.sample_headers)
+        self.vehicle_desc_mark_up_col = \
+            self.POSITION['first_sample_col'] + len(self.sample_dates) * len(self.sample_headers)
 
     def __str__(self):
         from datetime import datetime
@@ -137,8 +137,8 @@ class EquipmentAndIncentives(_base.EvolutionReport):
 
     def generate_report(self):
         def size_matrix_rows():
-            makes_amount = len(set(entity.make for entity in self.entities))
-            models_amount = len(set(entity.model for entity in self.entities))
+            makes_amount = len(set(veh.make for veh in self.entities))
+            models_amount = len(set(veh.model for veh in self.entities))
             return self.POSITION['first_sample_row'] + makes_amount + models_amount + len(self.entities)
 
         def on_make_change(new_make_name: str):
@@ -193,32 +193,32 @@ class EquipmentAndIncentives(_base.EvolutionReport):
             oem_incentive = vehicle_ent.oem_incentive
             self.matrix[version_row][column_index + 2] = oem_incentive[0]
             if oem_incentive[1]:
-                self.ws['{}{}'.format(utils.get_column_letter(_base.xl(column_index + 2)),
-                                      str(_base.xl(version_row)))].comment = Comment(text=oem_incentive[1],
-                                                                                     author='ReportTool')
+                self.ws['{}{}'.format(utils.get_column_letter(base.xl(column_index + 2)),
+                                      str(base.xl(version_row)))].comment = Comment(text=oem_incentive[1],
+                                                                                    author='ReportTool')
             finance_incentive = vehicle_ent.finance_incentive
             self.matrix[version_row][column_index + 3] = finance_incentive[0]
             if finance_incentive[1]:
-                self.ws['{}{}'.format(utils.get_column_letter(_base.xl(column_index + 3)),
-                                      str(_base.xl(version_row)))].comment = Comment(text=finance_incentive[1],
-                                                                                     author='ReportTool')
+                self.ws['{}{}'.format(utils.get_column_letter(base.xl(column_index + 3)),
+                                      str(base.xl(version_row)))].comment = Comment(text=finance_incentive[1],
+                                                                                    author='ReportTool')
             if vehicle_ent.sample_date > self.sample_dates[0]:
                 self.matrix[version_row][column_index + 4] = \
                     '=IF(AND(ISNUMBER({1}{0}),ISNUMBER({4}{0})),' \
                     '({1}{0}-SUM({2}{0}:{3}{0}))/({4}{0}-SUM({5}{0}:{6}{0}))-1,"-")'.format(
-                        str(_base.xl(version_row)),
-                        utils.get_column_letter(_base.xl(column_index)),
-                        utils.get_column_letter(_base.xl(column_index + 1)),
-                        utils.get_column_letter(_base.xl(column_index + 3)),
-                        utils.get_column_letter(_base.xl(column_index - 6)),
-                        utils.get_column_letter(_base.xl(column_index - 5)),
-                        utils.get_column_letter(_base.xl(column_index - 3)))
+                        str(base.xl(version_row)),
+                        utils.get_column_letter(base.xl(column_index)),
+                        utils.get_column_letter(base.xl(column_index + 1)),
+                        utils.get_column_letter(base.xl(column_index + 3)),
+                        utils.get_column_letter(base.xl(column_index - 6)),
+                        utils.get_column_letter(base.xl(column_index - 5)),
+                        utils.get_column_letter(base.xl(column_index - 3)))
             else:
                 self.matrix[version_row][column_index + 4] = '-'
 
             self.ws.conditional_formatting.add('{}{}'.format(
-                utils.get_column_letter(_base.xl(column_index + 4)),
-                _base.xl(version_row)), self.sample_headers[4].model_summary.formatting_rule)
+                utils.get_column_letter(base.xl(column_index + 4)),
+                base.xl(version_row)), self.sample_headers[4].model_summary.formatting_rule)
             self.matrix[version_row][column_index + 5] = vehicle_ent.volume
 
         self.ws.title = 'Comparative'
@@ -263,14 +263,14 @@ class EquipmentAndIncentives(_base.EvolutionReport):
                 for date_index, _ in enumerate(self.sample_dates):
                     summary_list.append('=Comparative!{}{}'.format(
                         utils.get_column_letter(
-                            _base.xl(self.POSITION['first_sample_col']
-                                     + net_price_header.offset
-                                     + date_index * (max_header_offset + 1))),
-                        _base.xl(summary_row)))
+                            base.xl(self.POSITION['first_sample_col']
+                                    + net_price_header.offset
+                                    + date_index * (max_header_offset + 1))),
+                        base.xl(summary_row)))
 
                 return summary_list
 
-            mark_up_col_letter = utils.get_column_letter(_base.xl(self.vehicle_desc_mark_up_col))
+            mark_up_col_letter = utils.get_column_letter(base.xl(self.vehicle_desc_mark_up_col))
             make_summary_list = [[]]
 
             make_summary_list[0].append('Date')
@@ -278,7 +278,7 @@ class EquipmentAndIncentives(_base.EvolutionReport):
                 make_summary_list[0].append(datetime.strptime(str(date), '%Y%m%d').strftime('%Y-%m'))
 
             for row in range(self.POSITION['first_sample_row'], last_row + 1):
-                if self.ws['{}{}'.format(mark_up_col_letter, _base.xl(row))].value not in ('m', 'v'):
+                if self.ws['{}{}'.format(mark_up_col_letter, base.xl(row))].value not in ('m', 'v'):
                     make_summary_list.append(extract_summary_data(summary_row=row, header_name='Net Price'))
 
             # Transpose
@@ -298,15 +298,10 @@ class EquipmentAndIncentives(_base.EvolutionReport):
         chart.x_axis.title = 'Date'
         chart.x_axis.number_format = 'yyyy-mm'
 
-        #for index, make in enumerate(set(veh.make for veh in self.entities)):
-        #    data = Reference(chart_sheet, min_row=1, min_col=index+1, max_row=len(self.sample_dates)+1, max_col=index+1)
-        #    series = Series(data, title=make)
-        #    chart.append(series)
-
         data = Reference(chart_sheet, min_col=2, min_row=1,
                          max_col=len(set(veh.make for veh in self.entities))+1, max_row=len(self.sample_dates)+1)
         chart.add_data(data, titles_from_data=True)
         dates = Reference(chart_sheet, min_col=1, min_row=2, max_row=len(self.sample_dates)+1)
         chart.set_categories(dates)
 
-        chart_sheet.add_chart(chart, 'A{}'.format(_base.xl(2 + len(self.sample_dates))))
+        chart_sheet.add_chart(chart, 'A{}'.format(base.xl(2 + len(self.sample_dates))))

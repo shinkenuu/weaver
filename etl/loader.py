@@ -1,4 +1,3 @@
-
 import credential
 import os
 import pymssql

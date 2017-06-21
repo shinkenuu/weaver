@@ -22,21 +22,33 @@ def etl(command: str, source: str, target: str, chain_until: str):
         if command not in ('extract', 'transform', 'load'):
             raise ValueError('Invalid command: {}'.format(command))
         if command == 'extract':
+            print('Extracting data for {} from {}'.format(target, source))
+            _warder.ward_progress('etl', 'INIT', 'Extracting data for {} from {}'.format(target, source))
             result = extractor.extract(source=source, target=target)
+            print('Extraction completed')
             _warder.ward_progress('etl', 'OK', '{} completed for {} from {}'.format(command, target, source))
             if chain_until == 'transform' or chain_until == 'load':
                 command = 'transform'
         if command == 'transform':
+            print('Transforming data for {} from {}'.format(target, source))
+            _warder.ward_progress('etl', 'INIT', 'Transforming data for {} from {}'.format(target, source))
             result = transformer.transform(into=target, source=source, input_data=result)
+            print('Transformation completed')
             _warder.ward_progress('etl', 'OK', '{} completed for {} from {}'.format(command, target, source))
             if chain_until == 'load':
                 command = 'load'
                 source = result
         if command == 'load':
+            print('Loading data for {} from {}'.format(target, source))
+            _warder.ward_progress('etl', 'INIT', 'Loading data for {} from {}'.format(target, source))
             loader.load(into=target, source=source)
+            print('Load completed')
             _warder.ward_progress('etl', 'OK', '{} completed for {} with {}'.format(command, target, source))
+        return 0
     except Exception as err:
+        print(err)
         _warder.ward_error('etl', err)
+        return -1
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Extract, Transform or Load data')

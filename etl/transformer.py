@@ -1,6 +1,6 @@
 import csv
-from etl import extractor
-from etl.entities import base as base_ents, cs2002 as cs2002_ents, v5 as v5_ents, msaccess as msaccess_ents, \
+from . import extractor
+from .entities import base as base_ents, cs2002 as cs2002_ents, v5 as v5_ents, msaccess as msaccess_ents, \
     rt as rt_ents
 
 READY_FILES_ROOT_DIR_PATH = '/mnt/jatobrfiles/Weaver/etl/ready/'

@@ -19,7 +19,7 @@ class Extractor(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def extract(self):
-        pass
+        raise NotImplementedError()
 
 
 class FtpExtractor(Extractor):
@@ -80,19 +80,20 @@ class SqlDataExtractor(Extractor):
         return self.output_path
 
 
-class MultiSourceExtractor(Extractor):
-    def __init__(self, single_extractor_list: tuple):
-        self.extractors_list = single_extractor_list
+class MultiSourceExtractor(object, Extractor):
+    def __init__(self, single_extractors: tuple):
+        super().__init__()
+        self.extractors = single_extractors
 
     def extract(self):
         """
         Loop through each source, extracting 
         :return: the extracted results
         """
-        if len(self.extractors_list) < 1:
-            raise IndexError('MultiSourceExtractor\'s extractor list is empty')
+        if len(self.extractors) < 1:
+            raise IndexError('No extractors found')
         results = []
-        for extractor in self.extractors_list:
+        for extractor in self.extractors:
                 results.extend(extractor.extract())
         return results
 
@@ -121,7 +122,7 @@ def extract(target: str, source: str):
                 raise NotImplementedError('extraction of specs from msaccess')
             else:
                 raise ValueError('{} is not a valid rt.vehicles source'.format(source))
-            return MultiSourceExtractor(single_extractor_list=extractors)
+            return MultiSourceExtractor(single_extractors=extractors)
         elif target == 'rt.incentives':
             if source == 'v5':
                 raise NotImplementedError('extraction of incentives from v5')
