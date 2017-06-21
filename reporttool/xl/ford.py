@@ -1,6 +1,7 @@
 from openpyxl import utils, formatting
-from openpyxl.chart import (LineChart, Reference, Series)
+from openpyxl.chart import (LineChart, Reference)
 from openpyxl.comments import Comment
+
 from . import base
 
 

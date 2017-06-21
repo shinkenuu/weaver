@@ -5,7 +5,7 @@ import pymssql
 
 import credential
 import warder
-from reporttool import ford
+from .xl import ford
 
 _warder = warder.Warder()
 
