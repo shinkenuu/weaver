@@ -8,6 +8,7 @@ READY_FILES_ROOT_DIR_PATH = '/mnt/jatobrfiles/Weaver/etl/ready/'
 READY_FILES_PATH_DICT = {
     'mssql|rt.vehicles': '{}rt/vehicles_from_mssql.txt'.format(READY_FILES_ROOT_DIR_PATH),
     'mssql|rt.incentives': '{}rt/incentives_from_mssql.txt'.format(READY_FILES_ROOT_DIR_PATH),
+    'v5|rt.vehicles': '{}rt/vehicles_from_v5.txt'.format(READY_FILES_ROOT_DIR_PATH),
     'v5|rt.incentives': '{}rt/incentives_from_v5.txt'.format(READY_FILES_ROOT_DIR_PATH),
     'msaccess|rt.incentives': '{}rt/incentives_from_msaccess.txt'.format(READY_FILES_ROOT_DIR_PATH),
     'msaccess|rt.tp': '{}rt/tp_from_msaccess.txt'.format(READY_FILES_ROOT_DIR_PATH),
@@ -22,6 +23,7 @@ READY_TYPES_DICT = {
 RAW_TYPES_DICT = {
     'mssql|rt.vehicles': cs2002_ents.Cs2002Entity,
     'mssql|rt.incentives': cs2002_ents.EscbrBrPublicIncentiveEntity,
+    'v5|rt.vehicles': v5_ents.SpecsEntity,
     'v5|rt.incentives': v5_ents.IncentiveEntity,
     'msaccess|rt.incentives': msaccess_ents.CsRtIncentivesEntity,
     'msaccess|rt.tp': msaccess_ents.CsRtTpCompletaEntity
@@ -30,6 +32,7 @@ RAW_TYPES_DICT = {
 EXTRACTED_FILES_DICT = {
     'mssql|rt.vehicles': ('sscbr_cs2002.txt', 'nscbr_cs2002.txt'),
     'mssql|rt.incentives': ('escbr_cs2002_br_public_incentive.txt', ),
+    'v5|rt.vehicles': ('sscbr.csv', 'nscbr.csv'),
     'v5|rt.incentives': ('escbr.csv', 'fscbr.csv'),
     'msaccess|rt.incentives': ('CS_RT_INCENTIVES.txt', ),
     'msaccess|rt.tp': ('CS_RT_TP_COMPLETA.txt', )

@@ -47,7 +47,7 @@ class FtpExtractor(Extractor):
         url = self.url
         if url.startswith('ftp://'):
             url = url.strip('ftp://')
-        return url.replace(url.split('/')[0], '')
+        return url.strip(url.split('/')[0])
 
 
 class SqlDataExtractor(Extractor):
@@ -80,9 +80,8 @@ class SqlDataExtractor(Extractor):
         return self.output_path
 
 
-class MultiSourceExtractor(object, Extractor):
+class MultiSourceExtractor(Extractor):
     def __init__(self, single_extractors: tuple):
-        super().__init__()
         self.extractors = single_extractors
 
     def extract(self):

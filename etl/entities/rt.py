@@ -2,6 +2,7 @@ import abc
 from datetime import datetime
 import math
 import re
+
 from . import base, cs2002 as cs2002_ents, v5 as v5_ents, msaccess as msaccess_ents
 
 version_state_dict = {
@@ -147,35 +148,101 @@ class RtEntity(object, metaclass=abc.ABCMeta):
 
 
 class VehicleEntity(RtEntity, base.AssemblerEntity):
-    def __init__(self, raw_ent_list: [cs2002_ents.Cs2002Entity]=None):
+    coded_v5_specs_version_state_dict = {
+        'especificações': version_state_dict['S'],
+        'opcionais': version_state_dict['O'],
+        'alt.preço': version_state_dict['P'],
+        'ano modelo': version_state_dict['M'],
+        'impostos': version_state_dict['T'],
+        'frota': version_state_dict['L'],
+        'novo modelo': version_state_dict['N'],
+        'moeda': version_state_dict['C'],
+        'novo visual': version_state_dict['F'],
+        'nova versão': version_state_dict['V'],
+        're-introdução': version_state_dict['R'],
+        'Mud.nome modelo': version_state_dict['D'],
+        'Mud.nome marca': version_state_dict['K'],
+        'descontinuada': version_state_dict['G'],
+    }
+
+    def __init__(self, raw_ent_list: [cs2002_ents.Cs2002Entity]=None, raw_ent: base.RawEntity=None):
         super().__init__()
-        self.uid = 0
-        self.data_date = 0  # %Y%m%d
-        self.version_state = ''
-        self.outgoing = False
-        self.make = ''
-        self.model = ''
-        self.version = ''
-        self.production_year = 0
-        self.model_year = 0
-        self.trim_level = ''
-        self.number_of_doors = 0
-        self.body_type = ''
-        self.fuel_type = ''
-        self.other_fuel_type = ''
-        self.transmission_description = ''
-        self.driven_wheels = ''
-        self.liters = 0.0
-        self.msrp = 0.0
+        self.uid = None
+        self.data_date = None  # %Y%m%d
+        self.version_state = None
+        self.outgoing = None
+        self.make = None
+        self.model = None
+        self.version = None
+        self.production_year = None
+        self.model_year = None
+        self.trim_level = None
+        self.number_of_doors = None
+        self.body_type = None
+        self.fuel_type = None
+        self.other_fuel_type = None
+        self.transmission_description = None
+        self.driven_wheels = None
+        self.liters = None
+        self.msrp = None
         if raw_ent_list:
             self.assembly(cs2002_ent_list=raw_ent_list)
+        elif raw_ent:
+                if isinstance(raw_ent, v5_ents.SpecsEntity):
+                    self.from_v5_specs(v5_spec_ent=raw_ent)
 
     def __str__(self):
-        return '|'.join([str(self.vehicle_id), str(self.uid), str(self.data_date), str(self.version_state),
-                         str(self.make), str(self.model), str(self.version), '1' if self.outgoing else '0',
-                         str(self.production_year), str(self.model_year), str(self.trim_level),
-                         str(self.number_of_doors), str(self.body_type), str(self.fuel_type), str(self.other_fuel_type),
-                         str(self.transmission_description), str(self.driven_wheels), str(self.liters), str(self.msrp)])
+        return '|'.join([str(self.vehicle_id), str(self.uid), str(self.data_date),
+                         '' if not self.version_state else str(self.version_state),
+                         '' if not self.make else str(self.make), '' if not self.model else str(self.model),
+                         '' if not self.version else str(self.version), '1' if self.outgoing else '0',
+                         '' if not self.production_year else str(self.production_year),
+                         '' if not self.model_year else str(self.model_year),
+                         '' if not self.trim_level else str(self.trim_level),
+                         '' if not self.number_of_doors else str(self.number_of_doors),
+                         '' if not self.body_type else str(self.body_type),
+                         '' if not self.fuel_type else str(self.fuel_type),
+                         '' if not self.other_fuel_type else str(self.other_fuel_type),
+                         '' if not self.transmission_description else str(self.transmission_description),
+                         '' if not self.driven_wheels else str(self.driven_wheels),
+                         '' if not self.liters else str(self.liters), '' if not self.msrp else str(self.msrp)])
+
+    def from_v5_specs(self, v5_spec_ent: v5_ents.SpecsEntity):
+        def format_date(date_str: str):
+            date = datetime.strptime(date_str, '%d/%m/%Y')
+            return int(date.strftime('%Y%m%d'))
+
+        def decode_version_state():
+            if not v5_spec_ent.version_state:
+                return None
+            decoded_version_states = []
+            try:
+                for coded_version_state in v5_spec_ent.version_state.split(':'):
+                    decoded_version_states.append(VehicleEntity.coded_v5_specs_version_state_dict[coded_version_state])
+            except KeyError:
+                raise IndexError(
+                    'Couldnt find the key to decode a version state within "{}"'.format(v5_spec_ent.version_state))
+            return ', '.join(decoded_version_states)
+
+        self.vehicle_id = '{}{}'.format(v5_spec_ent.uid, v5_spec_ent.data_date)
+        self.uid = v5_spec_ent.uid
+        self.data_date = v5_spec_ent.data_date
+        self.version_state = decode_version_state()
+        self.outgoing = True if 'descontinuada' in v5_spec_ent.version_state else False
+        self.make = v5_spec_ent.make
+        self.model = v5_spec_ent.model
+        self.version = v5_spec_ent.version
+        self.production_year = v5_spec_ent.production_year
+        self.model_year = v5_spec_ent.model_year
+        self.trim_level = v5_spec_ent.trim_level
+        self.number_of_doors = v5_spec_ent.number_of_doors
+        self.body_type = v5_spec_ent.body_type
+        self.fuel_type = v5_spec_ent.fuel_type
+        self.other_fuel_type = v5_spec_ent.other_fuel_type
+        self.transmission_description = v5_spec_ent.transmission_description
+        self.driven_wheels = v5_spec_ent.driven_wheels
+        self.liters = v5_spec_ent.liters
+        self.msrp = v5_spec_ent.price
 
     def _decode_raw_ent(self, cs2002_ent: cs2002_ents.Cs2002Entity):
         """
@@ -261,9 +328,9 @@ class IncentiveEntity(RtEntity, base.AssemblerEntity):
             self.assembly(raw_ent_list)
         elif raw_ent:
                 if isinstance(raw_ent, v5_ents.IncentiveEntity):
-                    self.from_v5_incentives(raw_ent)
+                    self.from_v5_incentives(v5_inc_ent=raw_ent)
                 elif isinstance(raw_ent, msaccess_ents.CsRtIncentivesEntity):
-                    self.from_msaccess_cs_rt_incentives(raw_ent)
+                    self.from_msaccess_cs_rt_incentives(cs_rt_incentive_ent=raw_ent)
 
     def __str__(self):
         return '|'.join([str(self.vehicle_id), str(self.data_date),

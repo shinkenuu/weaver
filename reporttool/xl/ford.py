@@ -9,56 +9,107 @@ class EquipmentAndIncentives(base.EvolutionReport):
     class Entity:
         class Incentive:
             def __init__(self, inc_data: tuple):
-                self.code, self.jato_value, self.take_rate, self.manuf_contrib, self.interest_perc, \
-                self.deposit_perc, self.max_term, self.final_balance_perc, self.internal_comments, \
-                self.public_notes = inc_data
+                self.code, self.jato_value, self.take_rate, self.manuf_contrib, self.interest_perc,\
+                    self.deposit_perc, self.max_term, self.final_balance_perc, self.start_date, self.end_date,\
+                    self.internal_comments, self.public_notes = inc_data
 
-        def __init__(self, veh_data: tuple, incentives: list):
-            self.make, self.model, self.version, self.prod_yr, self.model_yr, self.msrp, self.sample_date,\
-                self.volume, self.value = veh_data
-            self._incentives = [self.Incentive(inc_data=incentive[10:]) for incentive in incentives]
+        class Price:
+            def __init__(self, price_data: tuple):
+                self.msrp, self.data_date = price_data
+
+        class Volume:
+            def __init__(self, vol_data: tuple):
+                self.volume, self.data_date = vol_data
+
+        class Equipment:
+            def __init__(self, equip_data: tuple):
+                self.equipment_value, self.data_date = equip_data
+
+        def __init__(self, veh_data: tuple=None, grouped_data: list=None):
+            if veh_data is None and grouped_data is None:
+                self.make, self.model, self.version, self.prod_yr, self.model_yr = ['' for _ in range(5)]
+                self.prices = []
+                self._incentives = []
+                self.volumes = []
+                self.equipments = []
+                return
+            self.make, self.model, self.version, self.prod_yr, self.model_yr = veh_data
+            self.prices = [self.Price(price_data=unique_price)
+                           for unique_price in set([price[5:7] for price in grouped_data])]
+            self._incentives = [self.Incentive(inc_data=unique_incentive)
+                                for unique_incentive in set([incentive[7:19] for incentive in grouped_data])]
+            self.volumes = [self.Volume(vol_data=unique_volume)
+                            for unique_volume in set([volume[19:21] for volume in grouped_data])]
+            self.equipments = [self.Equipment(equip_data=unique_equip)
+                               for unique_equip in set([equipment[21:23] for equipment in grouped_data])]
 
         @property
         def pymy(self):
             return '{}/{}'.format(str(self.prod_yr % 100) if self.prod_yr else '?',
                                   str(self.model_yr % 100) if self.model_yr else '?')
 
-        @property
-        def oem_incentive(self):
+        def get_oem_incentive(self, data_date: int):
+            def comment(incentive: EquipmentAndIncentives.Entity.Incentive):
+                if incentive.code[:3] in ('SFS', 'SST', 'SSA'):
+                    return incentive.internal_comments
+                else:
+                    return incentive.public_notes
+
             oem_incs = [oem_inc for oem_inc in self._incentives if oem_inc.code[:3]
-                        in ('DAT', 'DLT', 'DOV', 'DPR', 'DSO', 'DTS', 'SFS', 'SSA', 'SST')]
+                        in ('SFS', 'SST', 'SSA', 'DPR', 'DSO', 'OFL', 'OIN', 'ORA', 'OSV', 'OVT', 'OWY', 'OPA',
+                            'OSO', 'OSA', 'PAS', 'PFR', 'POT', 'PRP', 'PSE', 'PSO', 'PSA', 'DOV', 'DLT', 'DTS')
+                        and oem_inc.jato_value is not None and oem_inc.start_date <= data_date <= oem_inc.end_date]
             if len(oem_incs) == 0:
                 return '-', None
             elif len(oem_incs) == 1:
-                return oem_incs[0].jato_value, oem_incs[0].public_notes
+                return oem_incs[0].jato_value, comment(oem_incs[0])
             else:
                 max_oem_inc = max(oem_incs, key=lambda oem_inc: oem_inc.jato_value)
-                return max_oem_inc.jato_value, max_oem_inc.public_notes
+                return max_oem_inc.jato_value, comment(max_oem_inc)
 
-        @property
-        def finance_incentive(self):
-            finances = [finance for finance in self._incentives if finance.code.startswith('F')]
+        def get_finance_incentive(self, data_date: int):
+            def comment(incentive: EquipmentAndIncentives.Entity.Incentive):
+                return 'Taxa {0}%/ {1}%/ {2}x + {3}% (Balão) Take Rate sum: {4}'.format(
+                    '?' if not incentive.interest_perc else incentive.interest_perc,
+                    '?' if not incentive.deposit_perc else incentive.deposit_perc,
+                    '?' if not incentive.final_balance_perc else incentive.final_balance_perc,
+                    '?' if not incentive.max_term else incentive.max_term,
+                    sum(f.take_rate for f in finances)) if incentive.final_balance_perc > 0 \
+                    else 'Taxa {0}%/ {1}%/ {2}x Take Rate sum: {3}'.format(
+                    '?' if not incentive.interest_perc else incentive.interest_perc,
+                    '?' if not incentive.deposit_perc else incentive.deposit_perc,
+                    '?' if not incentive.max_term else incentive.max_term,
+                    sum(f.take_rate for f in finances))
+
+            finances = [finance for finance in self._incentives if finance.code.startswith('F')
+                        and finance.jato_value is not None and finance.take_rate is not None
+                        and finance.start_date <= data_date <= finance.end_date]
             if len(finances) == 0:
                 return '-', None
             if len(finances) == 1:
-                if finances[0].jato_value is not None and finances[0].take_rate is not None: # TODO remove this condit
-                    return finances[0].jato_value / finances[0].take_rate, None
-                else:
-                    return '-', None
+                    return finances[0].jato_value / finances[0].take_rate, comment(finances[0])
             else:
-                finances.sort(key=lambda f: f.jato_value / f.take_rate)
-                return (finances[0].jato_value / finances[0].take_rate,
-                        ('Taxa {0:.2f}%/ {1}%/ {2}x Take Rate sum: {3}'.format(finances[1].interest_perc,
-                                                                               finances[1].deposit_perc,
-                                                                               finances[1].max_term,
-                                                                               sum(f.take_rate for f in finances))))
+                finances.sort(key=lambda f: f.jato_value)
+                if len(finances) > 2 and finances[1].jato_value - finances[2].jato_value >= 500:
+                    return finances[0].jato_value / finances[0].take_rate, ' | '.join(
+                        (comment(finances[0]), comment(finances[1]), comment(finances[2])))
+                else:
+                    return finances[0].jato_value / finances[0].take_rate, ' | '.join(
+                        (comment(finances[0]), comment(finances[1])))
 
     def __init__(self, data: tuple):
         def group_data():
             from itertools import groupby
             from operator import itemgetter
-            return [self.Entity(veh_data=veh_data[1:], incentives=incentives) for veh_data, incentives
-                    in groupby(data, key=itemgetter(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))]
+            return [self.Entity(veh_data=veh_data[:], grouped_data=list(grouped_data)) for veh_data, grouped_data
+                    in groupby(data, key=itemgetter(0, 1, 2, 3, 4))]
+
+        def define_sample_dates(veh_sample_dates: set, vol_sample_dates: set):
+            max_vol_sample_date = max(vol_sample_dates)
+            sample_dates = [veh_sample_date for veh_sample_date in veh_sample_dates
+                            if veh_sample_date > max_vol_sample_date]
+            sample_dates.extend(vol_sample_dates)
+            return sorted(sample_dates)
 
         def create_header(name: str, number_format: str, offset,
                           make_summary_formula: str, make_summary_formula_ranges: (tuple, ),
@@ -80,53 +131,55 @@ class EquipmentAndIncentives(base.EvolutionReport):
                                            showValue=True)
 
         super().__init__()
+        self.sample_dates = define_sample_dates(
+            veh_sample_dates=set((row[6] // 100) * 100 + 1 for row in data),
+            vol_sample_dates=set(row[-3] for row in data if row[-3] is not None))
         self.entities = group_data()
         data = None
         if not self.entities:
             raise IndexError('Cant generate report without data')
-        self.sample_dates = sorted(set(entity.sample_date for entity in self.entities))
-        self.sample_headers.append(create_header(name='MSRP', number_format='#,###', offset=0,
-                                                 make_summary_formula='=IF(ISERROR(AVERAGEIF({x},"m",{0})),"-",'
-                                                                      'AVERAGEIF({x},"m",{0}))',
-                                                 make_summary_formula_ranges=[(1, 0), ],
-                                                 model_summary_formula='=IF(ISERROR(AVERAGE({0})),"-",AVERAGE({0}))',
-                                                 model_summary_formula_ranges=[(1, 0)]))
-        self.sample_headers.append(create_header(name='Equip. Value', number_format='#,###', offset=1,
-                                                 make_summary_formula='=IF(ISERROR(SUMIF({x},"m",{0})),"-",'
-                                                                      'SUMIF({x},"m",{0}))',
-                                                 make_summary_formula_ranges=[(1, 0), ],
-                                                 model_summary_formula='=IF(ISERROR(SUM({0})),"-",SUM({0}))',
-                                                 model_summary_formula_ranges=[(1, 0)]))
-        self.sample_headers.append(create_header(name='Manuf. Contrib.', number_format='#,###', offset=2,
-                                                 make_summary_formula='=IF(ISERROR(AVERAGEIF({x},"m",{0})),"-",'
-                                                                      'AVERAGEIF({x},"m",{0}))',
-                                                 make_summary_formula_ranges=[(1, 0), ],
-                                                 model_summary_formula='=IF(ISERROR(AVERAGE({0})),"-",AVERAGE({0}))',
-                                                 model_summary_formula_ranges=[(1, 0)]))
-        self.sample_headers.append(create_header(name='Finance Incentive', number_format='#,###', offset=3,
-                                                 make_summary_formula='=IF(ISERROR(AVERAGEIF({x},"m",{0})),"-",'
-                                                                      'AVERAGEIF({x},"m",{0}))',
-                                                 make_summary_formula_ranges=[(1, 0), ],
-                                                 model_summary_formula='=IF(ISERROR(AVERAGE({0})),"-",AVERAGE({0}))',
-                                                 model_summary_formula_ranges=[(1, 0)]))
-        self.sample_headers.append(create_header(name='Net Price', number_format='#.00%', offset=4,
-                                                 make_summary_formula='=IF(ISERROR(AVERAGEIF({x},"m",{0})),"-",'
-                                                                      'AVERAGEIF({x},"m",{0}))',
-                                                 make_summary_formula_ranges=[(1, 0)],
-                                                 make_summary_format_rule=formatting.Rule(type='iconSet',
-                                                                                          iconSet=
-                                                                                          create_net_price_icon_set()),
-                                                 model_summary_formula='=IF(ISERROR(AVERAGE({0})),"-",AVERAGE({0}))',
-                                                 model_summary_formula_ranges=[(1, 0)],
-                                                 model_summary_format_rule=formatting.Rule(type='iconSet',
-                                                                                          iconSet=
-                                                                                          create_net_price_icon_set())))
-        self.sample_headers.append(create_header(name='Volume', number_format='#,###', offset=5,
-                                                 make_summary_formula='=IF(ISERROR(SUMIF({x},"m",{0})),"-",'
-                                                                      'SUMIF({x},"m",{0}))',
-                                                 make_summary_formula_ranges=[(1, 0), ],
-                                                 model_summary_formula='=IF(ISERROR(SUM({0})),"-",SUM({0}))',
-                                                 model_summary_formula_ranges=[(1, 0)]))
+        self.sample_headers.append(
+            create_header(name='MSRP', number_format='#,###', offset=0,
+                          make_summary_formula='=IF(ISERROR(AVERAGEIF({x},"m",{0})),"-",AVERAGEIF({x},"m",{0}))',
+                          make_summary_formula_ranges=[(1, 0), ],
+                          model_summary_formula='=IF(ISERROR(AVERAGE({0})),"-",AVERAGE({0}))',
+                          model_summary_formula_ranges=[(1, 0)]))
+        self.sample_headers.append(
+            create_header(name='Equip. Value', number_format='#,###', offset=1,
+                          make_summary_formula='=IF(ISERROR(SUMIF({x},"m",{0})),"-",SUMIF({x},"m",{0}))',
+                          make_summary_formula_ranges=[(1, 0), ],
+                          model_summary_formula='=IF(ISERROR(SUM({0})),"-",SUM({0}))',
+                          model_summary_formula_ranges=[(1, 0)]))
+        self.sample_headers.append(
+            create_header(name='Manuf. Contrib.', number_format='#,###', offset=2,
+                          make_summary_formula='=IF(ISERROR(AVERAGEIF({x},"m",{0})),"-",AVERAGEIF({x},"m",{0}))',
+                          make_summary_formula_ranges=[(1, 0), ],
+                          model_summary_formula='=IF(ISERROR(AVERAGE({0})),"-",AVERAGE({0}))',
+                          model_summary_formula_ranges=[(1, 0)]))
+        self.sample_headers.append(
+            create_header(name='Finance Incentive', number_format='#,###', offset=3,
+                          make_summary_formula='=IF(ISERROR(AVERAGEIF({x},"m",{0})),"-",AVERAGEIF({x},"m",{0}))',
+                          make_summary_formula_ranges=[(1, 0), ],
+                          model_summary_formula='=IF(ISERROR(AVERAGE({0})),"-",AVERAGE({0}))',
+                          model_summary_formula_ranges=[(1, 0)]))
+        self.sample_headers.append(
+            create_header(name='Net Price', number_format='#.00%', offset=4,
+                          make_summary_formula='=IF(ISERROR(AVERAGEIF({x},"m",{0})),"-",AVERAGEIF({x},"m",{0}))',
+                          make_summary_formula_ranges=[(1, 0)],
+                          make_summary_format_rule=formatting.Rule(
+                              type='iconSet',
+                              iconSet=create_net_price_icon_set()),
+                          model_summary_formula='=IF(ISERROR(AVERAGE({0})),"-",AVERAGE({0}))',
+                          model_summary_formula_ranges=[(1, 0)],
+                          model_summary_format_rule=formatting.Rule(
+                              type='iconSet',
+                              iconSet=create_net_price_icon_set())))
+        self.sample_headers.append(
+            create_header(name='Volume', number_format='#,###', offset=5,
+                          make_summary_formula='=IF(ISERROR(SUMIF({x},"m",{0})),"-",SUMIF({x},"m",{0}))',
+                          make_summary_formula_ranges=[(1, 0), ],
+                          model_summary_formula='=IF(ISERROR(SUM({0})),"-",SUM({0}))',
+                          model_summary_formula_ranges=[(1, 0)]))
         self.vehicle_desc_mark_up_col = \
             self.POSITION['first_sample_col'] + len(self.sample_dates) * len(self.sample_headers)
 
@@ -187,43 +240,50 @@ class EquipmentAndIncentives(base.EvolutionReport):
             self.matrix[row_index + 1][self.POSITION['prod_model_year_col']] = new_pymy
 
         def write_vehicle_data(vehicle_ent: self.Entity, version_row: int):
-            sample_date_index = self.sample_dates.index(vehicle_ent.sample_date)
-            column_index = self.POSITION['first_sample_col'] + sample_date_index * len(self.sample_headers)
-            self.matrix[version_row][column_index] = vehicle_ent.msrp
-            self.matrix[version_row][column_index + 1] = vehicle_ent.value if vehicle_ent.value else 0
-            oem_incentive = vehicle_ent.oem_incentive
-            self.matrix[version_row][column_index + 2] = oem_incentive[0]
-            if oem_incentive[1]:
-                self.ws['{}{}'.format(utils.get_column_letter(base.xl(column_index + 2)),
-                                      str(base.xl(version_row)))].comment = Comment(text=oem_incentive[1],
-                                                                                    author='ReportTool')
-            finance_incentive = vehicle_ent.finance_incentive
-            self.matrix[version_row][column_index + 3] = finance_incentive[0]
-            if finance_incentive[1]:
-                self.ws['{}{}'.format(utils.get_column_letter(base.xl(column_index + 3)),
-                                      str(base.xl(version_row)))].comment = Comment(text=finance_incentive[1],
-                                                                                    author='ReportTool')
-            if vehicle_ent.sample_date > self.sample_dates[0]:
-                self.matrix[version_row][column_index + 4] = \
-                    '=IF(AND(ISNUMBER({1}{0}),ISNUMBER({4}{0})),' \
-                    '({1}{0}-SUM({2}{0}:{3}{0}))/({4}{0}-SUM({5}{0}:{6}{0}))-1,"-")'.format(
-                        str(base.xl(version_row)),
-                        utils.get_column_letter(base.xl(column_index)),
-                        utils.get_column_letter(base.xl(column_index + 1)),
-                        utils.get_column_letter(base.xl(column_index + 3)),
-                        utils.get_column_letter(base.xl(column_index - 6)),
-                        utils.get_column_letter(base.xl(column_index - 5)),
-                        utils.get_column_letter(base.xl(column_index - 3)))
-            else:
-                self.matrix[version_row][column_index + 4] = '-'
+            for idx, sample_date in enumerate(self.sample_dates):
+                column_index = self.POSITION['first_sample_col'] + idx * len(self.sample_headers)
+                self.matrix[version_row][column_index] = next(
+                    (p.msrp for p in vehicle_ent.prices if p.data_date == max(
+                        vehicle_ent.prices, key=lambda p: (p.data_date // 100) * 100 + 1 <= sample_date).data_date),
+                    '?')
+                self.matrix[version_row][column_index + 1] = next(
+                    (e.equipment_value for e in vehicle_ent.equipments if e.data_date == sample_date), '?')
 
-            self.ws.conditional_formatting.add('{}{}'.format(
-                utils.get_column_letter(base.xl(column_index + 4)),
-                base.xl(version_row)), self.sample_headers[4].model_summary.formatting_rule)
-            self.matrix[version_row][column_index + 5] = vehicle_ent.volume
+                oem_incentive = vehicle_ent.get_oem_incentive(data_date=sample_date)
+                self.matrix[version_row][column_index + 2] = oem_incentive[0]
+                if oem_incentive[1]:
+                    self.ws['{}{}'.format(utils.get_column_letter(base.xl(column_index + 2)),
+                                          str(base.xl(version_row)))].comment = Comment(text=oem_incentive[1],
+                                                                                        author='ReportTool')
+
+                finance_incentive = vehicle_ent.get_finance_incentive(data_date=sample_date)
+                self.matrix[version_row][column_index + 3] = finance_incentive[0]
+                if finance_incentive[1]:
+                    self.ws['{}{}'.format(utils.get_column_letter(base.xl(column_index + 3)),
+                                          str(base.xl(version_row)))].comment = Comment(text=finance_incentive[1],
+                                                                                        author='ReportTool')
+                if idx > 0:
+                    self.matrix[version_row][column_index + 4] = \
+                        '=IF(AND(ISNUMBER({1}{0}),ISNUMBER({4}{0})),' \
+                        '({1}{0}-SUM({2}{0}:{3}{0}))/({4}{0}-SUM({5}{0}:{6}{0}))-1,"-")'.format(
+                            str(base.xl(version_row)),
+                            utils.get_column_letter(base.xl(column_index)),
+                            utils.get_column_letter(base.xl(column_index + 1)),
+                            utils.get_column_letter(base.xl(column_index + 3)),
+                            utils.get_column_letter(base.xl(column_index - 6)),
+                            utils.get_column_letter(base.xl(column_index - 5)),
+                            utils.get_column_letter(base.xl(column_index - 3)))
+                else:
+                    self.matrix[version_row][column_index + 4] = '-'
+
+                self.ws.conditional_formatting.add('{}{}'.format(
+                    utils.get_column_letter(base.xl(column_index + 4)),
+                    base.xl(version_row)), self.sample_headers[4].model_summary.formatting_rule)
+                self.matrix[version_row][column_index + 5] = next(
+                    (v.volume for v in vehicle_ent.volumes if v.data_date == sample_date), '?')
 
         self.ws.title = 'Comparative'
-        temp_ent = self.Entity(veh_data=tuple([None for _ in range(0, 9)]), incentives=[])
+        temp_ent = self.Entity()
         row_index = self.POSITION['first_sample_row'] - 1
         self.matrix = [['' for _ in range(self.vehicle_desc_mark_up_col + 1)] for _ in range(size_matrix_rows())]
         self.write_headers_to_matrix('Ford - Equipments & Incentives')

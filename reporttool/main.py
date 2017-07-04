@@ -5,7 +5,7 @@ import pymssql
 
 import credential
 import warder
-from .xl import ford
+from reporttool.xl import ford
 
 _warder = warder.Warder()
 
@@ -14,12 +14,13 @@ REPORT_TYPES_DICT = {
 }
 
 REPORT_VIEWS_DICT = {
-    'ford_equip_inc': 'select vehicle_id, make, model, version, production_year, model_year, msrp, sample_date, volume,'
-                      'value, code, jato_value, take_rate, manuf_contrib_msrp, interest_perc, deposit_perc, max_term, '
-                      'final_balance_perc, internal_comments, public_notes '
+    'ford_equip_inc': 'select make, model, version, production_year, model_year, msrp, data_date, '
+                      'code, jato_value, take_rate, manuf_contrib_msrp, interest_perc, deposit_perc, max_term, '
+                      'final_balance_perc, start_date, end_date, internal_comments, public_notes, '
+                      'volume, vol_sample_date, equp_value, equp_sample_date '
                       'from vw_ford_incentive_equipment '
-                      'where sample_date between {0} and {1} '
-                      'order by make, model, version, production_year, model_year, sample_date, code',
+                      'where start_date > {0} or end_date < {1} '
+                      'order by make, model, version, production_year, model_year',
 }
 
 

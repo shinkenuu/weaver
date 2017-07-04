@@ -35,31 +35,87 @@ class V5Entity(base.RawEntity):
         raise NotImplementedError()
 
 
+class SpecsEntity(V5Entity):
+    """
+        SCBR Entity
+    """
+    def __init__(self, raw_data):
+        self.uid = None
+        self.data_date = None
+        self.version_state = None
+        self.make = None
+        self.model = None
+        self.version = None
+        self.production_year = None
+        self.model_year = None
+        self.trim_level = None
+        self.number_of_doors = None
+        self.body_type = None
+        self.liters = None
+        self.price = None
+        self.transmission_header = None
+        self.transmission_description = None
+        self.driven_wheels_header = None
+        self.driven_wheels = None
+        self.fuel_header = None
+        self.fuel_type = None
+        self.other_fuel_type = None
+        super().__init__(raw_data=raw_data)
+
+    def from_line(self, line: str):
+        self.from_iterable(tuple(line.strip('\n').split('|')))
+
+    def from_iterable(self, iterable: tuple):
+        raise NotImplementedError()
+
+    def from_dict(self, dictionary: dict):
+        self.uid = None if not dictionary['UID'] else int(dictionary['UID'])
+        self.data_date = None if not dictionary['Data dos dados'] else int(dictionary['Data dos dados'])
+        self.version_state = dictionary['Estado Versão']
+        self.make = dictionary['Marca']
+        self.model = dictionary['Modelo']
+        self.version = dictionary['Versão']
+        self.production_year = None if not dictionary['Ano de Prod.'] else int(dictionary['Ano de Prod.'])
+        self.model_year = None if not dictionary['Ano modelo'] else int(dictionary['Ano modelo'])
+        self.trim_level = dictionary['Nível acabam.']
+        self.number_of_doors = None if not dictionary['n° de portas'] else int(dictionary['n° de portas'])
+        self.body_type = dictionary['Carroceria']
+        self.liters = None if not dictionary['litros'] else float(dictionary['litros'])
+        self.price = None if not dictionary['Preço'] else float(dictionary['Preço'])
+        self.transmission_header = dictionary['Transmissão']
+        self.transmission_description = dictionary['descr.transmis.']
+        self.driven_wheels_header = dictionary['Tração']
+        self.driven_wheels = dictionary['Tração']
+        self.fuel_header = dictionary['Combustível']
+        self.fuel_type = dictionary['Tipo Combust.']
+        self.other_fuel_type = dictionary['outro combust.']
+
+
 class IncentiveEntity(V5Entity):
     """
         V5 Incentives entity
     """
     def __init__(self, raw_data):
-        self.incentive_value_header = ''
-        self.jato_value = 0.0
-        self.take_rate_header = ''
-        self.take_rate = 0.0
-        self.contribution_header = ''
-        self.dealer_contrib_price = 0.0
-        self.government_contrib_price = 0.0
-        self.manufacturer_contrib_price = 0.0
-        self.finance_header = ''
+        self.incentive_value_header = None
+        self.jato_value = None
+        self.take_rate_header = None
+        self.take_rate = None
+        self.contribution_header = None
+        self.dealer_contrib_price = None
+        self.government_contrib_price = None
+        self.manufacturer_contrib_price = None
+        self.finance_header = None
         self.first_max_interest = None
         self.deposit_percent = None
         self.first_max_term = None
         self.final_balance = None
-        self.incentive_header = ''
-        self.inc_data_date = 0  # %d/%m/%Y
-        self.inc_start_date = 0  # %d/%m/%Y
-        self.inc_end_date = 0  # %d/%m/%Y
-        self.incentive_comments_header = ''
-        self.internal_comments = ''
-        self.public_notes = ''
+        self.incentive_header = None
+        self.inc_data_date = None  # %d/%m/%Y
+        self.inc_start_date = None  # %d/%m/%Y
+        self.inc_end_date = None  # %d/%m/%Y
+        self.incentive_comments_header = None
+        self.internal_comments = None
+        self.public_notes = None
         super().__init__(raw_data=raw_data)
 
     def from_line(self, line: str):
