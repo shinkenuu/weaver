@@ -129,8 +129,7 @@ class EvolutionReport(Report, abc.ABC):
                     self.matrix[version_row][self.POSITION['first_sample_col']
                                              + len(self.sample_headers) * sample_date_index + header.offset] = '?'
 
-    def write_make_header(self, make_name: str, amount_of_distinct_models_of_make: int,
-                          amount_of_distinct_vehicles_of_make: int, make_header_row: int):
+    def write_make_header(self, make_name: str, amount_of_rows_for_make: int, make_header_row: int):
         self.matrix[make_header_row][self.POSITION['vehicle_col']] = make_name
         for sample_date_index in range(len(self.sample_dates)):
             first_column_of_sample = self.POSITION['first_sample_col'] + sample_date_index * len(self.sample_headers)
@@ -139,14 +138,14 @@ class EvolutionReport(Report, abc.ABC):
                 self.matrix[make_header_row][absolute_column_of_header] = header.make_summary.mount(
                     cur_col=absolute_column_of_header,
                     cur_row=make_header_row,
-                    rows_amount=amount_of_distinct_vehicles_of_make + amount_of_distinct_models_of_make,
+                    rows_amount=amount_of_rows_for_make,
                     veh_mark_up_col=self.vehicle_desc_mark_up_col)
                 if header.make_summary.formatting_rule:
                     self.ws.conditional_formatting.add('{}{}'.format(
                         utils.get_column_letter(xl(absolute_column_of_header)),
                         xl(make_header_row)), header.make_summary.formatting_rule)
 
-    def write_model_header(self, model_name: str, amount_of_distinct_vehicles_of_model: int, model_header_row: int):
+    def write_model_header(self, model_name: str, amount_of_rows_for_model: int, model_header_row: int):
         self.matrix[model_header_row][self.POSITION['vehicle_col']] = model_name
         self.matrix[model_header_row][self.vehicle_desc_mark_up_col] = 'm'
         for sample_date_index in range(len(self.sample_dates)):
@@ -156,7 +155,7 @@ class EvolutionReport(Report, abc.ABC):
                 self.matrix[model_header_row][absolute_column_of_header] = header.model_summary.mount(
                     cur_col=absolute_column_of_header,
                     cur_row=model_header_row,
-                    rows_amount=amount_of_distinct_vehicles_of_model)
+                    rows_amount=amount_of_rows_for_model)
                 if header.model_summary.formatting_rule:
                     self.ws.conditional_formatting.add('{}{}'.format(
                         utils.get_column_letter(xl(absolute_column_of_header)),

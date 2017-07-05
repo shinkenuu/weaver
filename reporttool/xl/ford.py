@@ -48,7 +48,7 @@ class EquipmentAndIncentives(base.EvolutionReport):
             return '{}/{}'.format(str(self.prod_yr % 100) if self.prod_yr else '?',
                                   str(self.model_yr % 100) if self.model_yr else '?')
 
-        def get_oem_incentive(self, data_date: int):
+        def get_oem_incentive(self, sample_date: int):
             def comment(incentive: EquipmentAndIncentives.Entity.Incentive):
                 if incentive.code[:3] in ('SFS', 'SST', 'SSA'):
                     return incentive.internal_comments
@@ -58,7 +58,8 @@ class EquipmentAndIncentives(base.EvolutionReport):
             oem_incs = [oem_inc for oem_inc in self._incentives if oem_inc.code[:3]
                         in ('SFS', 'SST', 'SSA', 'DPR', 'DSO', 'OFL', 'OIN', 'ORA', 'OSV', 'OVT', 'OWY', 'OPA',
                             'OSO', 'OSA', 'PAS', 'PFR', 'POT', 'PRP', 'PSE', 'PSO', 'PSA', 'DOV', 'DLT', 'DTS')
-                        and oem_inc.jato_value is not None and oem_inc.start_date <= data_date <= oem_inc.end_date]
+                        and oem_inc.jato_value is not None
+                        and oem_inc.start_date // 100 <= sample_date // 100 <= oem_inc.end_date // 100]
             if len(oem_incs) == 0:
                 return '-', None
             elif len(oem_incs) == 1:
@@ -67,23 +68,20 @@ class EquipmentAndIncentives(base.EvolutionReport):
                 max_oem_inc = max(oem_incs, key=lambda oem_inc: oem_inc.jato_value)
                 return max_oem_inc.jato_value, comment(max_oem_inc)
 
-        def get_finance_incentive(self, data_date: int):
+        def get_finance_incentive(self, sample_date: int):
             def comment(incentive: EquipmentAndIncentives.Entity.Incentive):
-                return 'Taxa {0}%/ {1}%/ {2}x + {3}% (Balão) Take Rate sum: {4}'.format(
-                    '?' if not incentive.interest_perc else incentive.interest_perc,
-                    '?' if not incentive.deposit_perc else incentive.deposit_perc,
-                    '?' if not incentive.final_balance_perc else incentive.final_balance_perc,
-                    '?' if not incentive.max_term else incentive.max_term,
-                    sum(f.take_rate for f in finances)) if incentive.final_balance_perc > 0 \
-                    else 'Taxa {0}%/ {1}%/ {2}x Take Rate sum: {3}'.format(
-                    '?' if not incentive.interest_perc else incentive.interest_perc,
-                    '?' if not incentive.deposit_perc else incentive.deposit_perc,
-                    '?' if not incentive.max_term else incentive.max_term,
-                    sum(f.take_rate for f in finances))
+                return 'Taxa {0}%/{1}%/{2}x {3}Take Rate: {4}% x {5}'.format(
+                    '?' if incentive.interest_perc is None else '{0:.2f}'.format(incentive.interest_perc),
+                    '?' if incentive.deposit_perc is None else '{0:.2f}'.format(incentive.deposit_perc),
+                    '?' if incentive.max_term is None else '{0:.2f}'.format(incentive.max_term),
+                    '+ {0:.2f}% (Balão) '.format(incentive.final_balance_perc) if incentive.final_balance_perc > 0
+                    else ' ',
+                    '{0:.2f}'.format(incentive.take_rate),
+                    '{0:.2f}'.format(incentive.jato_value))
 
             finances = [finance for finance in self._incentives if finance.code.startswith('F')
                         and finance.jato_value is not None and finance.take_rate is not None
-                        and finance.start_date <= data_date <= finance.end_date]
+                        and finance.start_date // 100 <= sample_date // 100 <= finance.end_date // 100]
             if len(finances) == 0:
                 return '-', None
             if len(finances) == 1:
@@ -200,14 +198,10 @@ class EquipmentAndIncentives(base.EvolutionReport):
                 self.fill_empty_vehicle_cells(version_row=row_index)
             temp_ent.make = new_make_name
             temp_ent.model = None
-            vehicles_of_make = set([(veh.model, veh.version, veh.prod_yr, veh.model_yr) for veh in self.entities
-                                    if veh.make == new_make_name])
-            amount_of_models = len(set([veh[0] for veh in vehicles_of_make]))
-            veh_versions_of_make = set([(veh[1], veh[2], veh[3]) for veh in vehicles_of_make])
-            amount_of_veh_of_make = len([veh[0] for veh in veh_versions_of_make])
+            vehicles_of_make = [veh for veh in self.entities if veh.make == new_make_name]
+            models_of_make = set(veh.model for veh in vehicles_of_make)
             self.write_make_header(make_name=new_make_name,
-                                   amount_of_distinct_models_of_make=amount_of_models,
-                                   amount_of_distinct_vehicles_of_make=amount_of_veh_of_make,
+                                   amount_of_rows_for_make=len(vehicles_of_make) + len(models_of_make),
                                    make_header_row=row_index + 1)
 
         def on_model_change(new_model_name: str):
@@ -219,7 +213,7 @@ class EquipmentAndIncentives(base.EvolutionReport):
                 set([(veh.version, veh.prod_yr, veh.model_yr)
                      for veh in self.entities if veh.make == entity.make and veh.model == entity.model]))
             self.write_model_header(model_name=new_model_name,
-                                    amount_of_distinct_vehicles_of_model=amount_of_rows_for_model,
+                                    amount_of_rows_for_model=amount_of_rows_for_model,
                                     model_header_row=row_index + 1)
 
         def on_version_change(new_version_name: str):
@@ -249,14 +243,14 @@ class EquipmentAndIncentives(base.EvolutionReport):
                 self.matrix[version_row][column_index + 1] = next(
                     (e.equipment_value for e in vehicle_ent.equipments if e.data_date == sample_date), '?')
 
-                oem_incentive = vehicle_ent.get_oem_incentive(data_date=sample_date)
+                oem_incentive = vehicle_ent.get_oem_incentive(sample_date=sample_date)
                 self.matrix[version_row][column_index + 2] = oem_incentive[0]
                 if oem_incentive[1]:
                     self.ws['{}{}'.format(utils.get_column_letter(base.xl(column_index + 2)),
                                           str(base.xl(version_row)))].comment = Comment(text=oem_incentive[1],
                                                                                         author='ReportTool')
 
-                finance_incentive = vehicle_ent.get_finance_incentive(data_date=sample_date)
+                finance_incentive = vehicle_ent.get_finance_incentive(sample_date=sample_date)
                 self.matrix[version_row][column_index + 3] = finance_incentive[0]
                 if finance_incentive[1]:
                     self.ws['{}{}'.format(utils.get_column_letter(base.xl(column_index + 3)),
